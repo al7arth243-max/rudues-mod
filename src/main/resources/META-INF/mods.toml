@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="rudues"
+version="1.0.0"
+displayName="Rudues Mod"
+description='''
+Adds the Fire Fiend: consume it for permanent Strength V, Resistance V and Speed V,
+plus a skill wheel (hold R) with three purple-fire abilities.
+'''
+
+[[dependencies.rudues]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.rudues]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
