@@ -1,6 +1,7 @@
 package com.rudues.mod.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import com.rudues.mod.RuduesMod;
 import com.rudues.mod.entity.DemonEntity;
 import net.minecraft.client.Minecraft;
@@ -8,15 +9,17 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import software.bernie.geckolib.model.DefaultedEntityGeoModel;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
-import software.bernie.geckolib.renderer.layer.AutoGlowingGeoLayer;
 
 import java.util.UUID;
 
 /**
  * Renders the Hero of Hell demon.
- * Assets: geo/entity/rage_demon.geo.json, textures/entity/rage_demon(.png/_glowing.png),
+ * Assets: geo/entity/rage_demon.geo.json, textures/entity/rage_demon.png (glow baked in),
  *         animations/entity/rage_demon.animation.json
  */
 public class DemonRenderer extends GeoEntityRenderer<DemonEntity> {
@@ -24,22 +27,34 @@ public class DemonRenderer extends GeoEntityRenderer<DemonEntity> {
         super(context, new DefaultedEntityGeoModel<>(new ResourceLocation(RuduesMod.MODID, "rage_demon")));
         // the model is ~4.25 blocks tall; scale it up so it stands 5 blocks tall
         withScale(1.18F);
-        addRenderLayer(new AutoGlowingGeoLayer<>(this));
     }
 
     @Override
     public void render(DemonEntity entity, float entityYaw, float partialTick, PoseStack poseStack,
                        MultiBufferSource bufferSource, int packedLight) {
-        // in first person the camera would be inside the demon's head, so hide your own demon there
         Minecraft mc = Minecraft.getInstance();
-        UUID owner = entity.getOwnerUUID();
-        if (owner != null && mc.player != null && owner.equals(mc.player.getUUID())
-                && mc.options.getCameraType().isFirstPerson()) {
+        UUID ownerId = entity.getOwnerUUID();
+        Player owner = (ownerId == null || mc.level == null) ? null : mc.level.getPlayerByUUID(ownerId);
+
+        // in first person the camera would be inside the demon's head, so hide your own demon there
+        if (owner != null && owner == mc.player && mc.options.getCameraType().isFirstPerson()) {
             return;
         }
-        // the texture is dark obsidian: never let world lighting drop it below a readable floor
-        int block = Math.max(LightTexture.block(packedLight), 13);
-        int sky = Math.max(LightTexture.sky(packedLight), 13);
-        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, LightTexture.pack(block, sky));
+
+        poseStack.pushPose();
+        float yaw;
+        if (owner != null) {
+            // draw the demon exactly where its player is (no network lag) and facing where they aim
+            Vec3 delta = owner.getPosition(partialTick).subtract(entity.getPosition(partialTick));
+            poseStack.translate(delta.x, delta.y, delta.z);
+            yaw = owner.getViewYRot(partialTick);
+        } else {
+            yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+        }
+        // GeckoLib does not turn non-living entities, so apply the turn here (net rotation = 180 - yaw)
+        poseStack.mulPose(Axis.YP.rotationDegrees(-yaw));
+        // the obsidian texture is dark: render it fully lit so it never goes black
+        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
+        poseStack.popPose();
     }
 }

@@ -47,6 +47,8 @@ public class DemonEntity extends Entity implements GeoEntity {
     private static final int INTRO_TICKS = 28;
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private double lastOwnerX;
+    private double lastOwnerZ;
 
     public DemonEntity(EntityType<? extends DemonEntity> type, Level level) {
         super(type, level);
@@ -90,7 +92,10 @@ public class DemonEntity extends Entity implements GeoEntity {
             return;
         }
         glue(owner);
-        boolean moving = Math.hypot(owner.getX() - owner.xo, owner.getZ() - owner.zo) > 0.04;
+        // (owner.xo is already updated by the time this runs, so compare with our own previous sample)
+        boolean moving = Math.hypot(owner.getX() - lastOwnerX, owner.getZ() - lastOwnerZ) > 0.04;
+        lastOwnerX = owner.getX();
+        lastOwnerZ = owner.getZ();
         if (this.entityData.get(MOVING) != moving) {
             this.entityData.set(MOVING, moving);
         }
@@ -111,7 +116,16 @@ public class DemonEntity extends Entity implements GeoEntity {
         if (this.entityData.get(INTRO) && this.tickCount < INTRO_TICKS) {
             return state.setAndContinue(SPAWN);
         }
-        return state.setAndContinue(this.entityData.get(MOVING) ? WALK : IDLE);
+        return state.setAndContinue(isOwnerMoving() ? WALK : IDLE);
+    }
+
+    /** Client side: the owning player is right here, so just look at how far they moved this tick. */
+    private boolean isOwnerMoving() {
+        Player owner = getOwner();
+        if (owner == null) {
+            return this.entityData.get(MOVING);
+        }
+        return Math.hypot(owner.getX() - owner.xo, owner.getZ() - owner.zo) > 0.03;
     }
 
     @Override
