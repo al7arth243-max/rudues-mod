@@ -37,11 +37,15 @@ public class CommonEvents {
     /** While transformed the player's hitbox becomes demon-sized (both client and server run this). */
     @SubscribeEvent
     public static void onSize(EntityEvent.Size event) {
-        if (event.getEntity() instanceof Player player
-                && ModEffects.HERO_OF_HELL.isPresent()
-                && player.hasEffect(ModEffects.HERO_OF_HELL.get())
-                && (event.getPose() == Pose.STANDING || event.getPose() == Pose.CROUCHING)) {
-            event.setNewSize(EntityDimensions.scalable(1.6F, 5.0F), true);
+        try {
+            if (event.getEntity() instanceof Player player
+                    && ModEffects.HERO_OF_HELL.isPresent()
+                    && player.hasEffect(ModEffects.HERO_OF_HELL.get())
+                    && (event.getPose() == Pose.STANDING || event.getPose() == Pose.CROUCHING)) {
+                event.setNewSize(EntityDimensions.scalable(1.6F, 5.0F), true);
+            }
+        } catch (RuntimeException ignored) {
+            // this event can fire while the player object is still being constructed (effects not ready yet)
         }
     }
 
