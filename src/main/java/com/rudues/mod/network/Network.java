@@ -9,7 +9,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class Network {
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(RuduesMod.MODID, "main"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
 
@@ -18,12 +18,12 @@ public class Network {
         CHANNEL.messageBuilder(CastAbilityPacket.class, id++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(CastAbilityPacket::encode).decoder(CastAbilityPacket::decode)
                 .consumerMainThread(CastAbilityPacket::handle).add();
-        CHANNEL.messageBuilder(SyncPowersPacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(SyncPowersPacket::encode).decoder(SyncPowersPacket::decode)
-                .consumerMainThread(SyncPowersPacket::handle).add();
+        CHANNEL.messageBuilder(SyncStatePacket.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncStatePacket::encode).decoder(SyncStatePacket::decode)
+                .consumerMainThread(SyncStatePacket::handle).add();
     }
 
-    public static void sendPowers(ServerPlayer player, boolean has) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncPowersPacket(has));
+    public static void sendState(ServerPlayer player, boolean hasPowers, int gauge, int heroTicks) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncStatePacket(hasPowers, gauge, heroTicks));
     }
 }

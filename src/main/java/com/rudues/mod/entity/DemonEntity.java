@@ -1,0 +1,144 @@
+package com.rudues.mod.entity;
+
+import com.rudues.mod.registry.ModEffects;
+import com.rudues.mod.registry.ModEntities;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.util.GeckoLibUtil;
+
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * The 5-block "Hero of Hell" demon. It is a render/animation avatar that glues itself to the transformed
+ * player every tick (the player stays the real, controllable entity and keeps the health pool).
+ */
+public class DemonEntity extends Entity implements GeoEntity {
+    private static final EntityDataAccessor<Optional<UUID>> OWNER =
+            SynchedEntityData.defineId(DemonEntity.class, EntityDataSerializers.OPTIONAL_UUID);
+    private static final EntityDataAccessor<Boolean> MOVING =
+            SynchedEntityData.defineId(DemonEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> INTRO =
+            SynchedEntityData.defineId(DemonEntity.class, EntityDataSerializers.BOOLEAN);
+
+    private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("animation.rage_demon.idle");
+    private static final RawAnimation WALK = RawAnimation.begin().thenLoop("animation.rage_demon.walk");
+    private static final RawAnimation SPAWN = RawAnimation.begin().thenPlay("animation.rage_demon.spawn");
+    private static final RawAnimation BEAM = RawAnimation.begin().thenPlay("animation.rage_demon.concentrated_beam");
+    private static final RawAnimation OBLITERATOR = RawAnimation.begin().thenPlay("animation.rage_demon.obliterator_maximum");
+    private static final RawAnimation HELLFIRE = RawAnimation.begin().thenPlay("animation.rage_demon.hellfire");
+    private static final RawAnimation SLASH = RawAnimation.begin().thenPlay("animation.rage_demon.slash_combo");
+
+    /** length of the spawn/roar animation in ticks */
+    private static final int INTRO_TICKS = 40;
+
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+
+    public DemonEntity(EntityType<? extends DemonEntity> type, Level level) {
+        super(type, level);
+        this.noPhysics = true;
+        this.setNoGravity(true);
+    }
+
+    public DemonEntity(Level level, Player owner, boolean intro) {
+        this(ModEntities.DEMON.get(), level);
+        this.entityData.set(OWNER, Optional.of(owner.getUUID()));
+        this.entityData.set(INTRO, intro);
+        glue(owner);
+    }
+
+    @Nullable
+    public UUID getOwnerUUID() {
+        return this.entityData.get(OWNER).orElse(null);
+    }
+
+    @Nullable
+    private Player getOwner() {
+        UUID id = getOwnerUUID();
+        return id == null ? null : level().getPlayerByUUID(id);
+    }
+
+    private void glue(Player owner) {
+        setPos(owner.getX(), owner.getY(), owner.getZ());
+        setYRot(owner.getYRot());
+        setXRot(0.0F);
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (level().isClientSide) {
+            return;
+        }
+        Player owner = getOwner();
+        if (owner == null || !owner.isAlive() || !owner.hasEffect(ModEffects.HERO_OF_HELL.get())) {
+            discard();
+            return;
+        }
+        glue(owner);
+        boolean moving = Math.hypot(owner.getX() - owner.xo, owner.getZ() - owner.zo) > 0.04;
+        if (this.entityData.get(MOVING) != moving) {
+            this.entityData.set(MOVING, moving);
+        }
+    }
+
+    // ------------------------------------------------------------ GeckoLib
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "main", 3, this::mainAnimation));
+        controllers.add(new AnimationController<>(this, "attack", 0, state -> PlayState.STOP)
+                .triggerableAnim("beam", BEAM)
+                .triggerableAnim("obliterator", OBLITERATOR)
+                .triggerableAnim("hellfire", HELLFIRE)
+                .triggerableAnim("slash", SLASH));
+    }
+
+    private PlayState mainAnimation(AnimationState<DemonEntity> state) {
+        if (this.entityData.get(INTRO) && this.tickCount < INTRO_TICKS) {
+            return state.setAndContinue(SPAWN);
+        }
+        return state.setAndContinue(this.entityData.get(MOVING) ? WALK : IDLE);
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.cache;
+    }
+
+    // ------------------------------------------------------------ boilerplate
+    @Override
+    protected void defineSynchedData() {
+        this.entityData.define(OWNER, Optional.empty());
+        this.entityData.define(MOVING, false);
+        this.entityData.define(INTRO, true);
+    }
+
+    @Override
+    protected void readAdditionalSaveData(CompoundTag tag) {
+        if (tag.hasUUID("Owner")) {
+            this.entityData.set(OWNER, Optional.of(tag.getUUID("Owner")));
+        }
+    }
+
+    @Override
+    protected void addAdditionalSaveData(CompoundTag tag) {
+        UUID id = getOwnerUUID();
+        if (id != null) {
+            tag.putUUID("Owner", id);
+        }
+    }
+}

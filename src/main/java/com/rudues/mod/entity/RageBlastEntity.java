@@ -5,6 +5,9 @@ import com.rudues.mod.registry.ModEntities;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -15,8 +18,12 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import org.joml.Vector3f;
 
+/** Rage Blast fireball. The "giant" variant is the demon's Hellfire. */
 public class RageBlastEntity extends AbstractHurtingProjectile {
+    private static final EntityDataAccessor<Boolean> GIANT =
+            SynchedEntityData.defineId(RageBlastEntity.class, EntityDataSerializers.BOOLEAN);
     private static final DustParticleOptions PURPLE = new DustParticleOptions(new Vector3f(0.65F, 0.1F, 0.95F), 2.2F);
+    private static final DustParticleOptions PURPLE_BIG = new DustParticleOptions(new Vector3f(0.7F, 0.15F, 1.0F), 4.5F);
 
     public RageBlastEntity(EntityType<? extends RageBlastEntity> type, Level level) {
         super(type, level);
@@ -27,17 +34,42 @@ public class RageBlastEntity extends AbstractHurtingProjectile {
     }
 
     @Override
+    protected void defineSynchedData() {
+        super.defineSynchedData();
+        this.entityData.define(GIANT, false);
+    }
+
+    public void setGiant(boolean giant) {
+        this.entityData.set(GIANT, giant);
+    }
+
+    public boolean isGiant() {
+        return this.entityData.get(GIANT);
+    }
+
+    @Override
     public void tick() {
         super.tick();
         if (level().isClientSide) {
-            for (int i = 0; i < 4; i++) {
-                level().addParticle(PURPLE,
-                        getX() + (random.nextDouble() - 0.5) * 0.5,
-                        getY() + 0.3 + (random.nextDouble() - 0.5) * 0.5,
-                        getZ() + (random.nextDouble() - 0.5) * 0.5, 0, 0, 0);
+            if (isGiant()) {
+                for (int i = 0; i < 14; i++) {
+                    level().addParticle(PURPLE_BIG,
+                            getX() + (random.nextDouble() - 0.5) * 2.4,
+                            getY() + 0.3 + (random.nextDouble() - 0.5) * 2.4,
+                            getZ() + (random.nextDouble() - 0.5) * 2.4, 0, 0, 0);
+                }
+                level().addParticle(ParticleTypes.ELECTRIC_SPARK, getX() + (random.nextDouble() - 0.5) * 2,
+                        getY() + (random.nextDouble() - 0.5) * 2, getZ() + (random.nextDouble() - 0.5) * 2, 0, 0, 0);
+            } else {
+                for (int i = 0; i < 4; i++) {
+                    level().addParticle(PURPLE,
+                            getX() + (random.nextDouble() - 0.5) * 0.5,
+                            getY() + 0.3 + (random.nextDouble() - 0.5) * 0.5,
+                            getZ() + (random.nextDouble() - 0.5) * 0.5, 0, 0, 0);
+                }
+                level().addParticle(ParticleTypes.WITCH, getX(), getY() + 0.3, getZ(), 0, 0, 0);
             }
-            level().addParticle(ParticleTypes.WITCH, getX(), getY() + 0.3, getZ(), 0, 0, 0);
-        } else if (tickCount > 120) {
+        } else if (tickCount > 160) {
             discard();
         }
     }
@@ -49,16 +81,20 @@ public class RageBlastEntity extends AbstractHurtingProjectile {
             return;
         }
         Entity owner = getOwner();
-        // Moderate explosion that sets fires and destroys blocks.
-        level().explode(this, getX(), getY(), getZ(), 3.2F, true, Level.ExplosionInteraction.BLOCK);
+        boolean giant = isGiant();
+        level().explode(this, getX(), getY(), getZ(), giant ? 7.0F : 3.2F, true, Level.ExplosionInteraction.BLOCK);
 
-        AABB area = getBoundingBox().inflate(4.5);
+        AABB area = getBoundingBox().inflate(giant ? 9.0 : 4.5);
         for (LivingEntity e : level().getEntitiesOfClass(LivingEntity.class, area,
-                e -> e != owner && !(e instanceof FiendEntity f && owner != null && f.isOwner((LivingEntity) owner)))) {
-            e.setSecondsOnFire(10);
+                e -> e != owner && !(e instanceof FiendEntity f && owner instanceof LivingEntity o && f.isOwner(o)))) {
+            e.setSecondsOnFire(giant ? 15 : 10);
         }
         if (level() instanceof ServerLevel sl) {
-            FxUtil.purpleBurst(sl, position(), 80, 1.5);
+            FxUtil.purpleBurst(sl, position(), giant ? 260 : 80, giant ? 3.5 : 1.5);
+            if (giant) {
+                sl.sendParticles(ParticleTypes.ELECTRIC_SPARK, getX(), getY(), getZ(), 120, 3.0, 3.0, 3.0, 0.6);
+                sl.sendParticles(ParticleTypes.EXPLOSION_EMITTER, getX(), getY(), getZ(), 1, 0, 0, 0, 0);
+            }
         }
         discard();
     }

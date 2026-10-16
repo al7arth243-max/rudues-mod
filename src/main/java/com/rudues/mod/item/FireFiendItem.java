@@ -1,7 +1,7 @@
 package com.rudues.mod.item;
 
 import com.rudues.mod.ability.PowerData;
-import com.rudues.mod.network.Network;
+import com.rudues.mod.ability.HeroForm;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -39,7 +39,7 @@ public class FireFiendItem extends Item {
             PowerData.grant(player);
             PowerData.applyEffects(player);
             if (player instanceof ServerPlayer sp) {
-                Network.sendPowers(sp, true);
+                HeroForm.sync(sp);
             }
             player.displayClientMessage(Component.translatable("message.rudues.power_gained"), true);
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
