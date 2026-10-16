@@ -2,6 +2,7 @@ package com.rudues.mod.registry;
 
 import com.rudues.mod.RuduesMod;
 import com.rudues.mod.entity.FiendEntity;
+import com.rudues.mod.entity.BeamEntity;
 import com.rudues.mod.entity.DemonEntity;
 import com.rudues.mod.entity.RageBlastEntity;
 import com.rudues.mod.entity.WindSlashEntity;
@@ -34,4 +35,9 @@ public class ModEntities {
             () -> EntityType.Builder.<DemonEntity>of(DemonEntity::new, MobCategory.MISC)
                     .sized(3.0F, 5.0F).fireImmune().clientTrackingRange(16).updateInterval(1)
                     .build("hero_of_hell_demon"));
+
+    public static final RegistryObject<EntityType<BeamEntity>> BEAM = ENTITIES.register("concentrated_beam",
+            () -> EntityType.Builder.<BeamEntity>of(BeamEntity::new, MobCategory.MISC)
+                    .sized(0.5F, 0.5F).fireImmune().clientTrackingRange(10).updateInterval(1)
+                    .build("concentrated_beam"));
 }

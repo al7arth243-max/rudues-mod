@@ -28,7 +28,7 @@
   "ability.rudues.obliterator_maximum": "Obliterator Maximum",
   "ability.rudues.obliterator_maximum.desc": "A devastating punch of purple flames and purple lightning.",
   "ability.rudues.hellfire": "Hellfire",
-  "ability.rudues.hellfire.desc": "Join your palms and launch a giant purple fireball.",
+  "ability.rudues.hellfire.desc": "Roar for 3 seconds as fountains of purple fire erupt around you, then detonate in a massive explosion.",
   "ability.rudues.slash_combo": "Slash Combo",
   "ability.rudues.slash_combo.desc": "Rake your claws through enemies in a multi-hit combo.",
   "message.rudues.power_gained": "The Fire Fiend's power surges through you!",
@@ -39,5 +39,6 @@
   "gui.rudues.hero_of_hell": "Hero of Hell",
   "gui.rudues.selected": "selected",
   "gui.rudues.wheel_hint": "Point at a move and release the key (or click) to select it",
-  "gui.rudues.cast_hint": "Cast it with [%s]"
+  "gui.rudues.cast_hint": "Cast it with [%s]",
+  "entity.rudues.concentrated_beam": "Concentrated Beam"
 }

@@ -28,11 +28,7 @@ public class ClientModEvents {
         event.registerEntityRenderer(ModEntities.WIND_SLASH.get(), ctx -> new NoopRenderer<>(ctx));
         event.registerEntityRenderer(ModEntities.FIEND.get(), FiendRenderer::new);
         event.registerEntityRenderer(ModEntities.DEMON.get(), DemonRenderer::new);
-    }
-
-    @SubscribeEvent
-    public static void onLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
-        event.registerLayerDefinition(FiendModel.LAYER, FiendModel::createBodyLayer);
+        event.registerEntityRenderer(ModEntities.BEAM.get(), BeamRenderer::new);
     }
 
     @SubscribeEvent

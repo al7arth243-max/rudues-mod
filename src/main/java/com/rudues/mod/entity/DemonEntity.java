@@ -36,7 +36,8 @@ public class DemonEntity extends Entity implements GeoEntity {
             SynchedEntityData.defineId(DemonEntity.class, EntityDataSerializers.BOOLEAN);
 
     private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("animation.rage_demon.idle");
-    private static final RawAnimation WALK = RawAnimation.begin().thenLoop("animation.rage_demon.walk");
+    private static final RawAnimation RUN = RawAnimation.begin().thenLoop("animation.rage_demon.run");
+    private static final RawAnimation JUMP = RawAnimation.begin().thenPlayAndHold("animation.rage_demon.jump");
     private static final RawAnimation SPAWN = RawAnimation.begin().thenPlay("animation.rage_demon.spawn");
     private static final RawAnimation BEAM = RawAnimation.begin().thenPlay("animation.rage_demon.concentrated_beam");
     private static final RawAnimation OBLITERATOR = RawAnimation.begin().thenPlay("animation.rage_demon.obliterator_maximum");
@@ -116,7 +117,11 @@ public class DemonEntity extends Entity implements GeoEntity {
         if (this.entityData.get(INTRO) && this.tickCount < INTRO_TICKS) {
             return state.setAndContinue(SPAWN);
         }
-        return state.setAndContinue(isOwnerMoving() ? WALK : IDLE);
+        Player owner = getOwner();
+        if (owner != null && !owner.onGround() && !owner.isInWater() && !owner.isInLava()) {
+            return state.setAndContinue(JUMP);
+        }
+        return state.setAndContinue(isOwnerMoving() ? RUN : IDLE);
     }
 
     /** Client side: the owning player is right here, so just look at how far they moved this tick. */

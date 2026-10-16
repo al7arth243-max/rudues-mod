@@ -1,6 +1,7 @@
 package com.rudues.mod.ability;
 
 import com.rudues.mod.registry.ModParticles;
+import com.rudues.mod.entity.BeamEntity;
 import com.rudues.mod.entity.DemonEntity;
 import com.rudues.mod.entity.FiendEntity;
 import com.rudues.mod.entity.RageBlastEntity;
@@ -54,6 +55,7 @@ public class HeroForm {
         int attackTicks;
         AbilityType attack;
         UUID avatar;
+        UUID beam;
         ServerBossEvent bar;
     }
 
@@ -162,6 +164,7 @@ public class HeroForm {
                         AttributeModifier.Operation.ADDITION));
             }
             p.setHealth(p.getMaxHealth());
+            p.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, HeroConstants.DEMON_TICKS + 20, 1, false, false, true));
 
             s.bar = new ServerBossEvent(Component.translatable("gui.rudues.hero_of_hell"),
                     BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS);
@@ -244,7 +247,9 @@ public class HeroForm {
 
     private static void cleanupVisuals(ServerPlayer p, State s) {
         p.removeEffect(ModEffects.HERO_OF_HELL.get());
+        p.removeEffect(MobEffects.MOVEMENT_SPEED);
         p.setInvulnerable(false);
+        discardBeam(p, s);
         AttributeInstance hp = p.getAttribute(Attributes.MAX_HEALTH);
         if (hp != null) {
             hp.removeModifier(HEALTH_MOD);
@@ -264,6 +269,16 @@ public class HeroForm {
             s.avatar = null;
         }
         p.refreshDimensions();
+    }
+
+    private static void discardBeam(ServerPlayer p, State s) {
+        if (s.beam != null) {
+            Entity e = p.serverLevel().getEntity(s.beam);
+            if (e != null) {
+                e.discard();
+            }
+            s.beam = null;
+        }
     }
 
     /** Death / logout: drop everything silently. */
@@ -294,9 +309,9 @@ public class HeroForm {
                 anim = "obliterator";
             }
             case HELLFIRE -> {
-                s.busy = 28;
+                s.busy = 74;
                 anim = "hellfire";
-                rootPlayer(p, 26);
+                rootPlayer(p, 74);
             }
             default -> {
                 s.busy = 24;
@@ -347,15 +362,28 @@ public class HeroForm {
         Vec3 end = hitBlock ? hit.getLocation() : target;
         double len = end.subtract(origin).length();
 
+        // the visible beam itself
+        Entity be = s.beam == null ? null : level.getEntity(s.beam);
+        BeamEntity beam;
+        if (be instanceof BeamEntity existing && !existing.isRemoved()) {
+            beam = existing;
+        } else {
+            beam = new BeamEntity(level, p);
+            level.addFreshEntity(beam);
+            s.beam = beam.getUUID();
+        }
+        beam.aim(origin, look, (float) len);
+
+        // crackling extras along it
         int i = 0;
-        for (double d = 0; d <= len; d += 1.3, i++) {
+        for (double d = 0; d <= len; d += 2.4, i++) {
             Vec3 pt = origin.add(look.scale(d));
-            level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), pt.x, pt.y, pt.z, 1, 0.25, 0.25, 0.25, 0);
-            level.sendParticles(ModParticles.PURPLE_SPARK.get(), pt.x, pt.y, pt.z, 1, 0.5, 0.5, 0.5, 0.4);
-            if (i % 3 == 0) {
-                level.sendParticles(ModParticles.PURPLE_FLAME.get(), pt.x, pt.y, pt.z, 1, 0.3, 0.3, 0.3, 0.02);
+            level.sendParticles(ModParticles.PURPLE_SPARK.get(), pt.x, pt.y, pt.z, 1, 0.6, 0.6, 0.6, 0.4);
+            if (i % 2 == 0) {
+                level.sendParticles(ModParticles.PURPLE_EMBER.get(), pt.x, pt.y, pt.z, 2, 0.6, 0.6, 0.6, 0.05);
             }
         }
+        level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), origin.x, origin.y, origin.z, 2, 0.3, 0.3, 0.3, 0.02);
         if (hitBlock) {
             FxUtil.purpleBurst(level, end, 14, 0.8);
         }
@@ -379,6 +407,7 @@ public class HeroForm {
             level.explode(p, end.x, end.y, end.z, 2.5F, true, Level.ExplosionInteraction.NONE);
         }
         if (a >= 70) {
+            discardBeam(p, s);
             s.attack = null;
         }
     }
@@ -409,32 +438,108 @@ public class HeroForm {
         }
     }
 
-    // ------------------------------------------------------------------ 3. Hellfire
+    // ------------------------------------------------------------------ 3. Hellfire (3s roar, fire fountains, massive blast)
     private static void tickHellfire(ServerPlayer p, State s, ServerLevel level) {
         int a = s.attackTicks;
-        Vec3 look = p.getLookAngle();
-        Vec3 origin = p.getEyePosition().add(look.scale(3.4)).subtract(0, 1.0, 0);
-        if (a < 14) {
-            if (a == 1) {
-                level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.5F, 0.5F);
+        if (a < 60) {
+            if (a == 1 || a % 20 == 0) {
+                level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 3.0F, 0.5F);
+                level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.BLAZE_SHOOT, SoundSource.PLAYERS, 2.0F, 0.3F);
             }
+            if (a % 5 == 0) {
+                level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.FIRE_AMBIENT, SoundSource.PLAYERS, 1.5F, 0.6F);
+            }
+            // fountains of fire erupt around him, more and more as the roar builds
+            int jets = 1 + a / 12;
+            for (int j = 0; j < jets; j++) {
+                double ang = p.getRandom().nextDouble() * Math.PI * 2.0;
+                double dist = 2.5 + p.getRandom().nextDouble() * 8.0;
+                double jx = p.getX() + Math.cos(ang) * dist;
+                double jz = p.getZ() + Math.sin(ang) * dist;
+                double jy = findFloor(level, jx, p.getY(), jz);
+                for (int k = 0; k < 7; k++) {
+                    level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), jx, jy + 0.2, jz, 0,
+                            (p.getRandom().nextDouble() - 0.5) * 0.25, 0.7 + p.getRandom().nextDouble() * 0.6,
+                            (p.getRandom().nextDouble() - 0.5) * 0.25, 1.0);
+                }
+                for (int k = 0; k < 3; k++) {
+                    level.sendParticles(ModParticles.PURPLE_SPARK.get(), jx, jy + 0.5, jz, 0,
+                            (p.getRandom().nextDouble() - 0.5) * 0.5, 0.9 + p.getRandom().nextDouble() * 0.5,
+                            (p.getRandom().nextDouble() - 0.5) * 0.5, 1.0);
+                }
+                level.sendParticles(ModParticles.PURPLE_EMBER.get(), jx, jy + 1.0, jz, 3, 0.4, 1.0, 0.4, 0.08);
+                if (a % 4 == 0) {
+                    AABB jetBox = new AABB(jx - 1.4, jy - 0.5, jz - 1.4, jx + 1.4, jy + 7.0, jz + 1.4);
+                    for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, jetBox, x -> validTarget(x, p))) {
+                        e.invulnerableTime = 0;
+                        e.hurt(p.damageSources().playerAttack(p), 12.0F);
+                        e.setSecondsOnFire(8);
+                        e.setDeltaMovement(e.getDeltaMovement().add(0, 0.7, 0));
+                        e.hurtMarked = true;
+                    }
+                }
+            }
+            // heat haze around the roaring demon
             if (a % 2 == 0) {
-                int n = 3 + a / 3;
-                level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), origin.x, origin.y, origin.z, n, 0.3 + a * 0.03, 0.3 + a * 0.03, 0.3 + a * 0.03, 0.01);
-                level.sendParticles(ModParticles.PURPLE_SPARK.get(), origin.x, origin.y, origin.z, 2, 1.0, 1.0, 1.0, 0.3);
+                level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + 0.3, p.getZ(), 10, 2.5, 0.2, 2.5, 0.03);
             }
             return;
         }
-        if (a == 14) {
-            RageBlastEntity ball = new RageBlastEntity(level, p, look.x, look.y, look.z);
-            ball.setGiant(true);
-            ball.setPos(origin.x, origin.y, origin.z);
-            ball.setDeltaMovement(look.scale(1.1));
-            level.addFreshEntity(ball);
-            level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ENDER_DRAGON_SHOOT, SoundSource.PLAYERS, 2.0F, 0.5F);
-            level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.FIRECHARGE_USE, SoundSource.PLAYERS, 2.0F, 0.4F);
+        if (a == 60) {
+            // MASSIVE EXPLOSION centred on his own eye line (so he is not flung), he is shielded for the instant of the blast
+            double cx = p.getX(), cy = p.getEyeY(), cz = p.getZ();
+            p.setInvulnerable(true);
+            level.explode(p, cx, cy, cz, 9.0F, true, Level.ExplosionInteraction.BLOCK);
+            p.setInvulnerable(false);
+
+            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(18.0), x -> validTarget(x, p))) {
+                double dist = e.distanceTo(p);
+                if (dist > 18.0) {
+                    continue;
+                }
+                Vec3 away = new Vec3(e.getX() - p.getX(), 0, e.getZ() - p.getZ());
+                away = away.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : away.normalize();
+                e.invulnerableTime = 0;
+                e.hurt(p.damageSources().playerAttack(p), dist < 9.0 ? 160.0F : 90.0F);
+                e.setSecondsOnFire(20);
+                e.setDeltaMovement(e.getDeltaMovement().add(away.x * 3.0, 1.1, away.z * 3.0));
+                e.hurtMarked = true;
+            }
+            // expanding ring of flame, pillar, lightning and a huge flash
+            for (int deg = 0; deg < 360; deg += 8) {
+                double rad = Math.toRadians(deg);
+                for (int ring = 1; ring <= 3; ring++) {
+                    level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + 0.4, p.getZ(), 0,
+                            Math.cos(rad) * ring * 0.55, 0.12 * ring, Math.sin(rad) * ring * 0.55, 1.0);
+                }
+            }
+            for (int k = 0; k < 40; k++) {
+                level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + 0.3, p.getZ(), 0,
+                        (p.getRandom().nextDouble() - 0.5) * 0.5, 0.8 + p.getRandom().nextDouble() * 1.2,
+                        (p.getRandom().nextDouble() - 0.5) * 0.5, 1.0);
+            }
+            level.sendParticles(ModParticles.PURPLE_SPARK.get(), cx, cy, cz, 220, 5.0, 3.0, 5.0, 0.8);
+            level.sendParticles(ModParticles.PURPLE_EMBER.get(), cx, cy, cz, 160, 6.0, 3.0, 6.0, 0.15);
+            level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, cx, cy - 2.0, cz, 3, 3.0, 0.5, 3.0, 0);
+            FxUtil.purpleBurst(level, new Vec3(cx, cy - 1.5, cz), 300, 4.0);
+            level.playSound(null, cx, cy, cz, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 4.0F, 0.5F);
+            level.playSound(null, cx, cy, cz, SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 3.0F, 0.6F);
+            level.playSound(null, cx, cy, cz, SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 3.0F, 0.4F);
+        }
+        if (a >= 66) {
             s.attack = null;
         }
+    }
+
+    private static double findFloor(ServerLevel level, double x, double y, double z) {
+        net.minecraft.core.BlockPos.MutableBlockPos pos = new net.minecraft.core.BlockPos.MutableBlockPos(x, y + 3, z);
+        for (int i = 0; i < 12; i++) {
+            if (!level.getBlockState(pos).getCollisionShape(level, pos).isEmpty()) {
+                return pos.getY() + 1.0;
+            }
+            pos.move(0, -1, 0);
+        }
+        return y;
     }
 
     // ------------------------------------------------------------------ 4. Slash Combo

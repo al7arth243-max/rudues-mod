@@ -1,28 +1,26 @@
 package com.rudues.mod.client;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.rudues.mod.RuduesMod;
 import com.rudues.mod.entity.FiendEntity;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.MobRenderer;
-import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
+import software.bernie.geckolib.model.DefaultedEntityGeoModel;
+import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
-/** Purple, glowing allay look-alike. */
-public class FiendRenderer extends MobRenderer<FiendEntity, FiendModel> {
-    private static final ResourceLocation TEXTURE =
-            new ResourceLocation(RuduesMod.MODID, "textures/entity/fire_fiend_minion.png");
-
+/** The summoned fiends: the flame spirit model (geo/entity/flame_spirit.geo.json). */
+public class FiendRenderer extends GeoEntityRenderer<FiendEntity> {
     public FiendRenderer(EntityRendererProvider.Context context) {
-        super(context, new FiendModel(context.bakeLayer(FiendModel.LAYER)), 0.3F);
+        super(context, new DefaultedEntityGeoModel<>(new ResourceLocation(RuduesMod.MODID, "flame_spirit")));
+        withScale(1.0F);
+        this.shadowRadius = 0.0F;
     }
 
     @Override
-    public ResourceLocation getTextureLocation(FiendEntity entity) {
-        return TEXTURE;
-    }
-
-    @Override
-    protected int getBlockLightLevel(FiendEntity entity, BlockPos pos) {
-        return 15;
+    public void render(FiendEntity entity, float entityYaw, float partialTick, PoseStack poseStack,
+                       MultiBufferSource bufferSource, int packedLight) {
+        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, LightTexture.FULL_BRIGHT);
     }
 }

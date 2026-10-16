@@ -29,11 +29,28 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.util.GeckoLibUtil;
+
 import java.util.EnumSet;
 import java.util.UUID;
 
 /** Small purple-flame creature. Flies through blocks like a vex, dives at enemies and explodes. */
-public class FiendEntity extends PathfinderMob {
+public class FiendEntity extends PathfinderMob implements GeoEntity {
+
+    private static final EntityDataAccessor<Boolean> CHARGING =
+            SynchedEntityData.defineId(FiendEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final RawAnimation FLOAT = RawAnimation.begin().thenLoop("animation.flame_spirit.float");
+    private static final RawAnimation DIVE = RawAnimation.begin().thenLoop("animation.flame_spirit.dive");
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     @Nullable
     private UUID ownerUUID;
@@ -93,8 +110,14 @@ public class FiendEntity extends PathfinderMob {
             if (random.nextInt(3) == 0) {
                 level().addParticle(ModParticles.PURPLE_EMBER.get(), getX(), getY() + 0.5, getZ(), 0, 0.02, 0);
             }
-        } else if (--lifeTicks <= 0) {
-            fizzle();
+        } else {
+            boolean charging = getTarget() != null && getTarget().isAlive();
+            if (this.entityData.get(CHARGING) != charging) {
+                this.entityData.set(CHARGING, charging);
+            }
+            if (--lifeTicks <= 0) {
+                fizzle();
+            }
         }
     }
 
@@ -122,6 +145,24 @@ public class FiendEntity extends PathfinderMob {
             FxUtil.purpleBurst(sl, position().add(0, 0.4, 0), 50, 0.8);
         }
         discard();
+    }
+
+    // ------------------------------------------------------------ GeckoLib
+    @Override
+    protected void defineSynchedData() {
+        super.defineSynchedData();
+        this.entityData.define(CHARGING, false);
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "main", 2,
+                state -> state.setAndContinue(this.entityData.get(CHARGING) ? DIVE : FLOAT)));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.cache;
     }
 
     // ------------------------------------------------------------ misc
