@@ -2,6 +2,8 @@ package com.rudues.mod.client;
 
 import com.rudues.mod.RuduesMod;
 import com.rudues.mod.registry.ModEntities;
+import com.rudues.mod.registry.ModParticles;
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraft.client.renderer.entity.NoopRenderer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -31,6 +33,14 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void onLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(FiendModel.LAYER, FiendModel::createBodyLayer);
+    }
+
+    @SubscribeEvent
+    public static void onParticles(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(ModParticles.PURPLE_FLAME.get(), sprites -> new PurpleParticle.Provider(sprites, PurpleParticle.Kind.FLAME));
+        event.registerSpriteSet(ModParticles.PURPLE_FLAME_BIG.get(), sprites -> new PurpleParticle.Provider(sprites, PurpleParticle.Kind.FLAME_BIG));
+        event.registerSpriteSet(ModParticles.PURPLE_SPARK.get(), sprites -> new PurpleParticle.Provider(sprites, PurpleParticle.Kind.SPARK));
+        event.registerSpriteSet(ModParticles.PURPLE_EMBER.get(), sprites -> new PurpleParticle.Provider(sprites, PurpleParticle.Kind.EMBER));
     }
 
     @SubscribeEvent

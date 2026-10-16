@@ -1,5 +1,6 @@
 package com.rudues.mod.ability;
 
+import com.rudues.mod.registry.ModParticles;
 import com.rudues.mod.entity.FiendEntity;
 import com.rudues.mod.entity.RageBlastEntity;
 import com.rudues.mod.entity.WindSlashEntity;
@@ -106,16 +107,16 @@ public class AbilityHandler {
             Vec3 c = target.getBoundingBox().getCenter();
             FxUtil.purpleBurst(level, c, abyssal ? 50 : 30, 0.4);
             if (abyssal) {
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, c.x, c.y, c.z, 40, 0.6, 0.6, 0.6, 0.6);
+                level.sendParticles(ModParticles.PURPLE_SPARK.get(), c.x, c.y, c.z, 40, 0.6, 0.6, 0.6, 0.6);
             }
         }
 
         Vec3 fist = eye.add(look.scale(2.2));
         level.sendParticles(ParticleTypes.EXPLOSION, fist.x, fist.y, fist.z, 2, 0.2, 0.2, 0.2, 0);
-        level.sendParticles(ParticleTypes.FLAME, fist.x, fist.y, fist.z, 25, 0.3, 0.3, 0.3, 0.1);
+        level.sendParticles(ModParticles.PURPLE_FLAME.get(), fist.x, fist.y, fist.z, 25, 0.3, 0.3, 0.3, 0.1);
         FxUtil.purpleBurst(level, fist, abyssal ? 70 : 40, 0.5);
         if (abyssal) {
-            level.sendParticles(ParticleTypes.ELECTRIC_SPARK, fist.x, fist.y, fist.z, 60, 0.8, 0.8, 0.8, 0.5);
+            level.sendParticles(ModParticles.PURPLE_SPARK.get(), fist.x, fist.y, fist.z, 60, 0.8, 0.8, 0.8, 0.5);
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 0.6F, 1.4F);
         }

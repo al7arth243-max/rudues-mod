@@ -1,5 +1,6 @@
 package com.rudues.mod.ability;
 
+import com.rudues.mod.registry.ModParticles;
 import com.rudues.mod.entity.DemonEntity;
 import com.rudues.mod.entity.FiendEntity;
 import com.rudues.mod.entity.RageBlastEntity;
@@ -44,8 +45,6 @@ public class HeroForm {
     private static final double BONUS_HEALTH = 180.0;
     private static final int TRANSFORM_TICKS = 60;
 
-    private static final DustParticleOptions PURPLE = new DustParticleOptions(new Vector3f(0.65F, 0.1F, 0.95F), 1.5F);
-    private static final DustParticleOptions BIG = new DustParticleOptions(new Vector3f(0.7F, 0.15F, 1.0F), 3.4F);
 
     private static class State {
         int gauge;
@@ -127,10 +126,10 @@ public class HeroForm {
         double h = Math.min(14.0, t * 2.0);
         for (double y = 0; y <= h; y += 1.2) {
             double spread = 1.0 - Math.min(0.5, y / 30.0);
-            level.sendParticles(BIG, p.getX(), p.getY() + y, p.getZ(), 4, spread, 0.4, spread, 0.02);
-            level.sendParticles(ParticleTypes.FLAME, p.getX(), p.getY() + y, p.getZ(), 2, spread, 0.4, spread, 0.04);
+            level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + y, p.getZ(), 4, spread, 0.4, spread, 0.02);
+            level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + y, p.getZ(), 2, spread, 0.4, spread, 0.04);
             if (((int) (y / 1.2)) % 2 == 0) {
-                level.sendParticles(ParticleTypes.DRAGON_BREATH, p.getX(), p.getY() + y, p.getZ(), 1, spread, 0.4, spread, 0.03);
+                level.sendParticles(ModParticles.PURPLE_EMBER.get(), p.getX(), p.getY() + y, p.getZ(), 1, spread, 0.4, spread, 0.03);
             }
         }
         if (t == 1) {
@@ -210,8 +209,8 @@ public class HeroForm {
 
         // ember aura
         if (p.tickCount % 3 == 0) {
-            level.sendParticles(PURPLE, p.getX(), p.getY() + 2.5, p.getZ(), 6, 1.2, 2.0, 1.2, 0.02);
-            level.sendParticles(ParticleTypes.DRAGON_BREATH, p.getX(), p.getY() + 0.3, p.getZ(), 2, 1.2, 0.1, 1.2, 0.02);
+            level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + 2.5, p.getZ(), 6, 1.2, 2.0, 1.2, 0.02);
+            level.sendParticles(ModParticles.PURPLE_EMBER.get(), p.getX(), p.getY() + 0.3, p.getZ(), 2, 1.2, 0.1, 1.2, 0.02);
         }
 
         if (s.attack != null) {
@@ -286,21 +285,21 @@ public class HeroForm {
         String anim;
         switch (type) {
             case CONCENTRATED_BEAM -> {
-                s.busy = 90;
+                s.busy = 76;
                 anim = "beam";
-                rootPlayer(p, 90);
+                rootPlayer(p, 76);
             }
             case OBLITERATOR_MAXIMUM -> {
-                s.busy = 28;
+                s.busy = 18;
                 anim = "obliterator";
             }
             case HELLFIRE -> {
-                s.busy = 46;
+                s.busy = 28;
                 anim = "hellfire";
-                rootPlayer(p, 40);
+                rootPlayer(p, 26);
             }
             default -> {
-                s.busy = 42;
+                s.busy = 24;
                 anim = "slash";
             }
         }
@@ -319,22 +318,22 @@ public class HeroForm {
         Vec3 look = p.getLookAngle();
         Vec3 origin = p.getEyePosition().add(look.scale(2.4)).subtract(0, 1.1, 0);
 
-        if (a < 20) {
+        if (a < 10) {
             if (a == 1) {
                 level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.CONDUIT_ACTIVATE, SoundSource.PLAYERS, 1.5F, 0.6F);
             }
             if (a % 2 == 0) {
-                double r = 3.0 * (1.0 - a / 20.0) + 0.4;
+                double r = 3.0 * (1.0 - a / 10.0) + 0.4;
                 for (int i = 0; i < 10; i++) {
                     Vec3 dir = new Vec3(p.getRandom().nextGaussian(), p.getRandom().nextGaussian(), p.getRandom().nextGaussian()).normalize();
                     Vec3 c = origin.add(dir.scale(r));
-                    level.sendParticles(PURPLE, c.x, c.y, c.z, 1, 0, 0, 0, 0);
+                    level.sendParticles(ModParticles.PURPLE_FLAME.get(), c.x, c.y, c.z, 1, 0, 0, 0, 0);
                 }
-                level.sendParticles(BIG, origin.x, origin.y, origin.z, 2, 0.2, 0.2, 0.2, 0);
+                level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), origin.x, origin.y, origin.z, 2, 0.2, 0.2, 0.2, 0);
             }
             return;
         }
-        if (a == 20) {
+        if (a == 10) {
             level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ENDER_DRAGON_SHOOT, SoundSource.PLAYERS, 2.0F, 0.6F);
         }
         if (a % 15 == 0) {
@@ -351,10 +350,10 @@ public class HeroForm {
         int i = 0;
         for (double d = 0; d <= len; d += 1.3, i++) {
             Vec3 pt = origin.add(look.scale(d));
-            level.sendParticles(BIG, pt.x, pt.y, pt.z, 1, 0.25, 0.25, 0.25, 0);
-            level.sendParticles(ParticleTypes.ELECTRIC_SPARK, pt.x, pt.y, pt.z, 1, 0.5, 0.5, 0.5, 0.4);
+            level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), pt.x, pt.y, pt.z, 1, 0.25, 0.25, 0.25, 0);
+            level.sendParticles(ModParticles.PURPLE_SPARK.get(), pt.x, pt.y, pt.z, 1, 0.5, 0.5, 0.5, 0.4);
             if (i % 3 == 0) {
-                level.sendParticles(ParticleTypes.FLAME, pt.x, pt.y, pt.z, 1, 0.3, 0.3, 0.3, 0.02);
+                level.sendParticles(ModParticles.PURPLE_FLAME.get(), pt.x, pt.y, pt.z, 1, 0.3, 0.3, 0.3, 0.02);
             }
         }
         if (hitBlock) {
@@ -373,13 +372,13 @@ public class HeroForm {
                 e.hurt(p.damageSources().playerAttack(p), 9.0F);
                 e.setSecondsOnFire(8);
                 Vec3 c = e.getBoundingBox().getCenter();
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, c.x, c.y, c.z, 20, 0.4, 0.5, 0.4, 0.4);
+                level.sendParticles(ModParticles.PURPLE_SPARK.get(), c.x, c.y, c.z, 20, 0.4, 0.5, 0.4, 0.4);
             }
         }
         if (hitBlock && a % 10 == 0) {
             level.explode(p, end.x, end.y, end.z, 2.5F, true, Level.ExplosionInteraction.NONE);
         }
-        if (a >= 80) {
+        if (a >= 70) {
             s.attack = null;
         }
     }
@@ -389,23 +388,23 @@ public class HeroForm {
         int a = s.attackTicks;
         Vec3 look = p.getLookAngle();
         Vec3 fist = p.getEyePosition().add(look.scale(3.8)).subtract(0, 1.2, 0);
-        if (a < 17) {
+        if (a < 9) {
             if (a % 2 == 0) {
-                level.sendParticles(PURPLE, fist.x, fist.y, fist.z, 6, 0.6, 0.6, 0.6, 0.02);
+                level.sendParticles(ModParticles.PURPLE_FLAME.get(), fist.x, fist.y, fist.z, 6, 0.6, 0.6, 0.6, 0.02);
             }
             return;
         }
-        if (a == 17) {
+        if (a == 9) {
             cone(p, level, 8.0, 0.3, 100.0F, 5.0, 15, true);
             level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, fist.x, fist.y, fist.z, 1, 0, 0, 0, 0);
-            level.sendParticles(ParticleTypes.FLAME, fist.x, fist.y, fist.z, 60, 1.0, 1.0, 1.0, 0.15);
-            level.sendParticles(ParticleTypes.ELECTRIC_SPARK, fist.x, fist.y, fist.z, 100, 1.5, 1.5, 1.5, 0.7);
+            level.sendParticles(ModParticles.PURPLE_FLAME.get(), fist.x, fist.y, fist.z, 60, 1.0, 1.0, 1.0, 0.15);
+            level.sendParticles(ModParticles.PURPLE_SPARK.get(), fist.x, fist.y, fist.z, 100, 1.5, 1.5, 1.5, 0.7);
             FxUtil.purpleBurst(level, fist, 150, 1.5);
             level.explode(p, fist.x, fist.y, fist.z, 3.0F, true, Level.ExplosionInteraction.NONE);
             level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.5F, 0.7F);
             level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 1.0F, 1.2F);
         }
-        if (a >= 22) {
+        if (a >= 13) {
             s.attack = null;
         }
     }
@@ -415,18 +414,18 @@ public class HeroForm {
         int a = s.attackTicks;
         Vec3 look = p.getLookAngle();
         Vec3 origin = p.getEyePosition().add(look.scale(3.4)).subtract(0, 1.0, 0);
-        if (a < 26) {
+        if (a < 14) {
             if (a == 1) {
                 level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 1.5F, 0.5F);
             }
             if (a % 2 == 0) {
                 int n = 3 + a / 3;
-                level.sendParticles(BIG, origin.x, origin.y, origin.z, n, 0.3 + a * 0.03, 0.3 + a * 0.03, 0.3 + a * 0.03, 0.01);
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, origin.x, origin.y, origin.z, 2, 1.0, 1.0, 1.0, 0.3);
+                level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), origin.x, origin.y, origin.z, n, 0.3 + a * 0.03, 0.3 + a * 0.03, 0.3 + a * 0.03, 0.01);
+                level.sendParticles(ModParticles.PURPLE_SPARK.get(), origin.x, origin.y, origin.z, 2, 1.0, 1.0, 1.0, 0.3);
             }
             return;
         }
-        if (a == 26) {
+        if (a == 14) {
             RageBlastEntity ball = new RageBlastEntity(level, p, look.x, look.y, look.z);
             ball.setGiant(true);
             ball.setPos(origin.x, origin.y, origin.z);
@@ -442,10 +441,10 @@ public class HeroForm {
     private static void tickSlash(ServerPlayer p, State s, ServerLevel level) {
         int a = s.attackTicks;
         int idx = switch (a) {
-            case 6 -> 0;
-            case 14 -> 1;
-            case 22 -> 2;
-            case 32 -> 3;
+            case 4 -> 0;
+            case 8 -> 1;
+            case 12 -> 2;
+            case 18 -> 3;
             default -> -1;
         };
         if (idx >= 0) {
@@ -457,7 +456,7 @@ public class HeroForm {
                 level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0F, 1.2F);
             }
         }
-        if (a >= 38) {
+        if (a >= 22) {
             s.attack = null;
         }
     }
@@ -473,10 +472,10 @@ public class HeroForm {
             double t = i / 10.0;
             Vec3 pt = center.add(look.scale((3.2 - 1.4 * t * t) * scale))
                     .add(right.scale(t * 3.4 * scale)).add(0, tilt * t * 1.8 * scale, 0);
-            level.sendParticles(BIG, pt.x, pt.y, pt.z, 1, 0.1, 0.1, 0.1, 0);
+            level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), pt.x, pt.y, pt.z, 1, 0.1, 0.1, 0.1, 0);
             if (i % 2 == 0) {
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, pt.x, pt.y, pt.z, 2, 0.2, 0.2, 0.2, 0.3);
-                level.sendParticles(ParticleTypes.FLAME, pt.x, pt.y, pt.z, 1, 0.1, 0.1, 0.1, 0.02);
+                level.sendParticles(ModParticles.PURPLE_SPARK.get(), pt.x, pt.y, pt.z, 2, 0.2, 0.2, 0.2, 0.3);
+                level.sendParticles(ModParticles.PURPLE_FLAME.get(), pt.x, pt.y, pt.z, 1, 0.1, 0.1, 0.1, 0.02);
             }
             if (i % 5 == 0) {
                 level.sendParticles(ParticleTypes.SWEEP_ATTACK, pt.x, pt.y, pt.z, 1, 0, 0, 0, 0);
@@ -509,7 +508,7 @@ public class HeroForm {
             e.hurtMarked = true;
             FxUtil.purpleBurst(level, center, 40, 0.5);
             if (electric) {
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, center.x, center.y, center.z, 50, 0.7, 0.7, 0.7, 0.6);
+                level.sendParticles(ModParticles.PURPLE_SPARK.get(), center.x, center.y, center.z, 50, 0.7, 0.7, 0.7, 0.6);
             }
         }
     }

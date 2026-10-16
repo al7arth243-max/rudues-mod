@@ -1,5 +1,6 @@
 package com.rudues.mod.entity;
 
+import com.rudues.mod.registry.ModParticles;
 import com.rudues.mod.ability.FxUtil;
 import com.rudues.mod.registry.ModEntities;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -22,8 +23,6 @@ import org.joml.Vector3f;
 public class RageBlastEntity extends AbstractHurtingProjectile {
     private static final EntityDataAccessor<Boolean> GIANT =
             SynchedEntityData.defineId(RageBlastEntity.class, EntityDataSerializers.BOOLEAN);
-    private static final DustParticleOptions PURPLE = new DustParticleOptions(new Vector3f(0.65F, 0.1F, 0.95F), 2.2F);
-    private static final DustParticleOptions PURPLE_BIG = new DustParticleOptions(new Vector3f(0.7F, 0.15F, 1.0F), 4.5F);
 
     public RageBlastEntity(EntityType<? extends RageBlastEntity> type, Level level) {
         super(type, level);
@@ -53,21 +52,21 @@ public class RageBlastEntity extends AbstractHurtingProjectile {
         if (level().isClientSide) {
             if (isGiant()) {
                 for (int i = 0; i < 14; i++) {
-                    level().addParticle(PURPLE_BIG,
+                    level().addParticle(ModParticles.PURPLE_FLAME_BIG.get(),
                             getX() + (random.nextDouble() - 0.5) * 2.4,
                             getY() + 0.3 + (random.nextDouble() - 0.5) * 2.4,
                             getZ() + (random.nextDouble() - 0.5) * 2.4, 0, 0, 0);
                 }
-                level().addParticle(ParticleTypes.ELECTRIC_SPARK, getX() + (random.nextDouble() - 0.5) * 2,
+                level().addParticle(ModParticles.PURPLE_SPARK.get(), getX() + (random.nextDouble() - 0.5) * 2,
                         getY() + (random.nextDouble() - 0.5) * 2, getZ() + (random.nextDouble() - 0.5) * 2, 0, 0, 0);
             } else {
                 for (int i = 0; i < 4; i++) {
-                    level().addParticle(PURPLE,
+                    level().addParticle(ModParticles.PURPLE_FLAME.get(),
                             getX() + (random.nextDouble() - 0.5) * 0.5,
                             getY() + 0.3 + (random.nextDouble() - 0.5) * 0.5,
                             getZ() + (random.nextDouble() - 0.5) * 0.5, 0, 0, 0);
                 }
-                level().addParticle(ParticleTypes.WITCH, getX(), getY() + 0.3, getZ(), 0, 0, 0);
+                level().addParticle(ModParticles.PURPLE_EMBER.get(), getX(), getY() + 0.3, getZ(), 0, 0, 0);
             }
         } else if (tickCount > 160) {
             discard();
@@ -92,7 +91,7 @@ public class RageBlastEntity extends AbstractHurtingProjectile {
         if (level() instanceof ServerLevel sl) {
             FxUtil.purpleBurst(sl, position(), giant ? 260 : 80, giant ? 3.5 : 1.5);
             if (giant) {
-                sl.sendParticles(ParticleTypes.ELECTRIC_SPARK, getX(), getY(), getZ(), 120, 3.0, 3.0, 3.0, 0.6);
+                sl.sendParticles(ModParticles.PURPLE_SPARK.get(), getX(), getY(), getZ(), 120, 3.0, 3.0, 3.0, 0.6);
                 sl.sendParticles(ParticleTypes.EXPLOSION_EMITTER, getX(), getY(), getZ(), 1, 0, 0, 0, 0);
             }
         }
@@ -101,7 +100,7 @@ public class RageBlastEntity extends AbstractHurtingProjectile {
 
     @Override
     protected ParticleOptions getTrailParticle() {
-        return ParticleTypes.DRAGON_BREATH;
+        return ModParticles.PURPLE_EMBER.get();
     }
 
     @Override

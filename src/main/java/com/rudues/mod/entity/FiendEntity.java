@@ -1,5 +1,6 @@
 package com.rudues.mod.entity;
 
+import com.rudues.mod.registry.ModParticles;
 import com.rudues.mod.ability.FxUtil;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -33,7 +34,6 @@ import java.util.UUID;
 
 /** Small purple-flame creature. Flies through blocks like a vex, dives at enemies and explodes. */
 public class FiendEntity extends PathfinderMob {
-    private static final DustParticleOptions PURPLE = new DustParticleOptions(new Vector3f(0.65F, 0.1F, 0.95F), 1.0F);
 
     @Nullable
     private UUID ownerUUID;
@@ -88,10 +88,10 @@ public class FiendEntity extends PathfinderMob {
         this.setNoGravity(true);
 
         if (level().isClientSide) {
-            level().addParticle(PURPLE, getX() + (random.nextDouble() - 0.5) * 0.4, getY() + 0.2 + random.nextDouble() * 0.6,
+            level().addParticle(ModParticles.PURPLE_FLAME.get(), getX() + (random.nextDouble() - 0.5) * 0.4, getY() + 0.2 + random.nextDouble() * 0.6,
                     getZ() + (random.nextDouble() - 0.5) * 0.4, 0, 0, 0);
             if (random.nextInt(3) == 0) {
-                level().addParticle(ParticleTypes.DRAGON_BREATH, getX(), getY() + 0.5, getZ(), 0, 0.02, 0);
+                level().addParticle(ModParticles.PURPLE_EMBER.get(), getX(), getY() + 0.5, getZ(), 0, 0.02, 0);
             }
         } else if (--lifeTicks <= 0) {
             fizzle();

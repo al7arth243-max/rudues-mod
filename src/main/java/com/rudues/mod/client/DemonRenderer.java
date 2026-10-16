@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.rudues.mod.RuduesMod;
 import com.rudues.mod.entity.DemonEntity;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
@@ -36,6 +37,9 @@ public class DemonRenderer extends GeoEntityRenderer<DemonEntity> {
                 && mc.options.getCameraType().isFirstPerson()) {
             return;
         }
-        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
+        // the texture is dark obsidian: never let world lighting drop it below a readable floor
+        int block = Math.max(LightTexture.block(packedLight), 13);
+        int sky = Math.max(LightTexture.sky(packedLight), 13);
+        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, LightTexture.pack(block, sky));
     }
 }

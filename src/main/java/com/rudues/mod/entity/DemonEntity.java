@@ -44,7 +44,7 @@ public class DemonEntity extends Entity implements GeoEntity {
     private static final RawAnimation SLASH = RawAnimation.begin().thenPlay("animation.rage_demon.slash_combo");
 
     /** length of the spawn/roar animation in ticks */
-    private static final int INTRO_TICKS = 40;
+    private static final int INTRO_TICKS = 28;
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 

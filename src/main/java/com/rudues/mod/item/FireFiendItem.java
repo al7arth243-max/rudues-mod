@@ -1,5 +1,6 @@
 package com.rudues.mod.item;
 
+import com.rudues.mod.registry.ModParticles;
 import com.rudues.mod.ability.PowerData;
 import com.rudues.mod.ability.HeroForm;
 import net.minecraft.core.particles.ParticleTypes;
@@ -47,9 +48,9 @@ public class FireFiendItem extends Item {
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.BLAZE_SHOOT, SoundSource.PLAYERS, 1.0F, 0.6F);
             if (level instanceof ServerLevel sl) {
-                sl.sendParticles(ParticleTypes.DRAGON_BREATH, player.getX(), player.getY() + 1.0, player.getZ(),
+                sl.sendParticles(ModParticles.PURPLE_EMBER.get(), player.getX(), player.getY() + 1.0, player.getZ(),
                         80, 0.5, 0.9, 0.5, 0.05);
-                sl.sendParticles(ParticleTypes.WITCH, player.getX(), player.getY() + 1.0, player.getZ(),
+                sl.sendParticles(ModParticles.PURPLE_EMBER.get(), player.getX(), player.getY() + 1.0, player.getZ(),
                         60, 0.6, 1.0, 0.6, 0.1);
             }
             if (!player.getAbilities().instabuild) {
