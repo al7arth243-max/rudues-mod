@@ -33,7 +33,7 @@ public class ModEntities {
 
     public static final RegistryObject<EntityType<DemonEntity>> DEMON = ENTITIES.register("hero_of_hell_demon",
             () -> EntityType.Builder.<DemonEntity>of(DemonEntity::new, MobCategory.MISC)
-                    .sized(3.0F, 5.0F).fireImmune().clientTrackingRange(16).updateInterval(1)
+                    .sized(4.2F, 7.0F).fireImmune().clientTrackingRange(16).updateInterval(1)
                     .build("hero_of_hell_demon"));
 
     public static final RegistryObject<EntityType<BeamEntity>> BEAM = ENTITIES.register("concentrated_beam",

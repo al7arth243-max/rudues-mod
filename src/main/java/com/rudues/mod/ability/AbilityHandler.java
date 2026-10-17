@@ -58,7 +58,7 @@ public class AbilityHandler {
             case FIEND_SUMMON -> fiendSummon(player);
             case VIOLENT_GALE -> violentGale(player);
             case STAND_GROUND -> standGround(player);
-            case CONCENTRATED_BEAM, OBLITERATOR_MAXIMUM, HELLFIRE, SLASH_COMBO -> HeroForm.beginMove(player, type);
+            case CONCENTRATED_BEAM, OBLITERATOR_MAXIMUM, HELLFIRE, SLASH_COMBO, METEOR_IMPACT -> HeroForm.beginMove(player, type);
         }
 
         if (!type.hero) {

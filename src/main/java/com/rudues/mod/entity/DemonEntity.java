@@ -42,6 +42,10 @@ public class DemonEntity extends Entity implements GeoEntity {
     private static final RawAnimation BEAM = RawAnimation.begin().thenPlay("animation.rage_demon.concentrated_beam");
     private static final RawAnimation OBLITERATOR = RawAnimation.begin().thenPlay("animation.rage_demon.obliterator_maximum");
     private static final RawAnimation HELLFIRE = RawAnimation.begin().thenPlay("animation.rage_demon.hellfire");
+    private static final RawAnimation METEOR_RUSH = RawAnimation.begin().thenPlayAndHold("animation.rage_demon.meteor_rush");
+    private static final RawAnimation METEOR_LEAP = RawAnimation.begin().thenPlayAndHold("animation.rage_demon.meteor_leap");
+    private static final RawAnimation METEOR_SLAM = RawAnimation.begin().thenPlay("animation.rage_demon.meteor_slam");
+    private static final RawAnimation METEOR_RECOVER = RawAnimation.begin().thenPlay("animation.rage_demon.meteor_recover");
     private static final RawAnimation SLASH = RawAnimation.begin().thenPlay("animation.rage_demon.slash_combo");
 
     /** length of the spawn/roar animation in ticks */
@@ -110,7 +114,11 @@ public class DemonEntity extends Entity implements GeoEntity {
                 .triggerableAnim("beam", BEAM)
                 .triggerableAnim("obliterator", OBLITERATOR)
                 .triggerableAnim("hellfire", HELLFIRE)
-                .triggerableAnim("slash", SLASH));
+                .triggerableAnim("slash", SLASH)
+                .triggerableAnim("meteor_rush", METEOR_RUSH)
+                .triggerableAnim("meteor_leap", METEOR_LEAP)
+                .triggerableAnim("meteor_slam", METEOR_SLAM)
+                .triggerableAnim("meteor_recover", METEOR_RECOVER));
     }
 
     private PlayState mainAnimation(AnimationState<DemonEntity> state) {

@@ -56,6 +56,11 @@ public class HeroForm {
         AbilityType attack;
         UUID avatar;
         UUID beam;
+        int mPhase;
+        int mTicks;
+        UUID grabbed;
+        boolean grabNoAi;
+        double peakY;
         ServerBossEvent bar;
     }
 
@@ -125,12 +130,12 @@ public class HeroForm {
         p.fallDistance = 0;
 
         // pillar of purple flame engulfing the player
-        double h = Math.min(14.0, t * 2.0);
-        for (double y = 0; y <= h; y += 1.2) {
-            double spread = 1.0 - Math.min(0.5, y / 30.0);
+        double h = Math.min(24.0, t * 3.0);
+        for (double y = 0; y <= h; y += 1.6) {
+            double spread = 1.8 - Math.min(0.8, y / 30.0);
             level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + y, p.getZ(), 4, spread, 0.4, spread, 0.02);
             level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + y, p.getZ(), 2, spread, 0.4, spread, 0.04);
-            if (((int) (y / 1.2)) % 2 == 0) {
+            if (((int) (y / 1.6)) % 2 == 0) {
                 level.sendParticles(ModParticles.PURPLE_EMBER.get(), p.getX(), p.getY() + y, p.getZ(), 1, spread, 0.4, spread, 0.03);
             }
         }
@@ -172,7 +177,7 @@ public class HeroForm {
             s.bar.setProgress(1.0F);
             s.bar.addPlayer(p);
 
-            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(10.0),
+            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(15.0),
                     e -> e != p && !(e instanceof FiendEntity f && f.isOwner(p)))) {
                 Vec3 away = new Vec3(e.getX() - p.getX(), 0, e.getZ() - p.getZ());
                 away = away.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : away.normalize();
@@ -181,7 +186,7 @@ public class HeroForm {
                 e.setDeltaMovement(e.getDeltaMovement().add(away.x * 2.2, 0.9, away.z * 2.2));
                 e.hurtMarked = true;
             }
-            FxUtil.purpleBurst(level, p.position().add(0, 2.0, 0), 260, 3.0);
+            FxUtil.purpleBurst(level, p.position().add(0, 3.0, 0), 340, 4.5);
             level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, p.getX(), p.getY() + 1.0, p.getZ(), 1, 0, 0, 0, 0);
             level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.5F, 0.6F);
             level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 1.5F, 0.5F);
@@ -212,7 +217,7 @@ public class HeroForm {
 
         // ember aura
         if (p.tickCount % 3 == 0) {
-            level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + 2.5, p.getZ(), 6, 1.2, 2.0, 1.2, 0.02);
+            level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + 3.5, p.getZ(), 8, 1.8, 3.0, 1.8, 0.02);
             level.sendParticles(ModParticles.PURPLE_EMBER.get(), p.getX(), p.getY() + 0.3, p.getZ(), 2, 1.2, 0.1, 1.2, 0.02);
         }
 
@@ -223,6 +228,7 @@ public class HeroForm {
                 case OBLITERATOR_MAXIMUM -> tickPunch(p, s, level);
                 case HELLFIRE -> tickHellfire(p, s, level);
                 case SLASH_COMBO -> tickSlash(p, s, level);
+                case METEOR_IMPACT -> tickMeteor(p, s, level);
                 default -> s.attack = null;
             }
         }
@@ -250,6 +256,7 @@ public class HeroForm {
         p.removeEffect(MobEffects.MOVEMENT_SPEED);
         p.setInvulnerable(false);
         discardBeam(p, s);
+        releaseGrab(p.serverLevel(), s);
         AttributeInstance hp = p.getAttribute(Attributes.MAX_HEALTH);
         if (hp != null) {
             hp.removeModifier(HEALTH_MOD);
@@ -313,6 +320,13 @@ public class HeroForm {
                 anim = "hellfire";
                 rootPlayer(p, 74);
             }
+            case METEOR_IMPACT -> {
+                s.busy = 220;
+                anim = "meteor_rush";
+                s.mPhase = 1;
+                s.mTicks = 0;
+                s.grabbed = null;
+            }
             default -> {
                 s.busy = 24;
                 anim = "slash";
@@ -331,7 +345,7 @@ public class HeroForm {
     private static void tickBeam(ServerPlayer p, State s, ServerLevel level) {
         int a = s.attackTicks;
         Vec3 look = p.getLookAngle();
-        Vec3 origin = p.getEyePosition().add(look.scale(2.4)).subtract(0, 1.1, 0);
+        Vec3 origin = p.getEyePosition().add(look.scale(HeroConstants.BEAM_FORWARD)).subtract(0, HeroConstants.BEAM_DOWN, 0);
 
         if (a < 10) {
             if (a == 1) {
@@ -389,11 +403,11 @@ public class HeroForm {
         }
 
         if (a % 5 == 0) {
-            AABB box = new AABB(origin, end).inflate(2.0);
+            AABB box = new AABB(origin, end).inflate(3.0);
             for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box, e -> validTarget(e, p))) {
                 Vec3 to = e.getBoundingBox().getCenter().subtract(origin);
                 double proj = to.dot(look);
-                if (proj < 0 || proj > len + 1.0 || to.subtract(look.scale(proj)).length() > 1.8) {
+                if (proj < 0 || proj > len + 1.0 || to.subtract(look.scale(proj)).length() > 2.6) {
                     continue;
                 }
                 e.invulnerableTime = 0;
@@ -416,7 +430,7 @@ public class HeroForm {
     private static void tickPunch(ServerPlayer p, State s, ServerLevel level) {
         int a = s.attackTicks;
         Vec3 look = p.getLookAngle();
-        Vec3 fist = p.getEyePosition().add(look.scale(3.8)).subtract(0, 1.2, 0);
+        Vec3 fist = chest(p).add(look.scale(5.2));
         if (a < 9) {
             if (a % 2 == 0) {
                 level.sendParticles(ModParticles.PURPLE_FLAME.get(), fist.x, fist.y, fist.z, 6, 0.6, 0.6, 0.6, 0.02);
@@ -424,7 +438,7 @@ public class HeroForm {
             return;
         }
         if (a == 9) {
-            cone(p, level, 8.0, 0.3, 100.0F, 5.0, 15, true);
+            cone(p, level, 11.0, 0.3, 100.0F, 5.0, 15, true);
             level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, fist.x, fist.y, fist.z, 1, 0, 0, 0, 0);
             level.sendParticles(ModParticles.PURPLE_FLAME.get(), fist.x, fist.y, fist.z, 60, 1.0, 1.0, 1.0, 0.15);
             level.sendParticles(ModParticles.PURPLE_SPARK.get(), fist.x, fist.y, fist.z, 100, 1.5, 1.5, 1.5, 0.7);
@@ -450,16 +464,16 @@ public class HeroForm {
                 level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.FIRE_AMBIENT, SoundSource.PLAYERS, 1.5F, 0.6F);
             }
             // fountains of fire erupt around him, more and more as the roar builds
-            int jets = 1 + a / 12;
+            int jets = 2 + a / 7;
             for (int j = 0; j < jets; j++) {
                 double ang = p.getRandom().nextDouble() * Math.PI * 2.0;
-                double dist = 2.5 + p.getRandom().nextDouble() * 8.0;
+                double dist = 4.0 + p.getRandom().nextDouble() * 20.0;
                 double jx = p.getX() + Math.cos(ang) * dist;
                 double jz = p.getZ() + Math.sin(ang) * dist;
                 double jy = findFloor(level, jx, p.getY(), jz);
                 for (int k = 0; k < 7; k++) {
                     level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), jx, jy + 0.2, jz, 0,
-                            (p.getRandom().nextDouble() - 0.5) * 0.25, 0.7 + p.getRandom().nextDouble() * 0.6,
+                            (p.getRandom().nextDouble() - 0.5) * 0.25, 0.9 + p.getRandom().nextDouble() * 0.8,
                             (p.getRandom().nextDouble() - 0.5) * 0.25, 1.0);
                 }
                 for (int k = 0; k < 3; k++) {
@@ -469,7 +483,7 @@ public class HeroForm {
                 }
                 level.sendParticles(ModParticles.PURPLE_EMBER.get(), jx, jy + 1.0, jz, 3, 0.4, 1.0, 0.4, 0.08);
                 if (a % 4 == 0) {
-                    AABB jetBox = new AABB(jx - 1.4, jy - 0.5, jz - 1.4, jx + 1.4, jy + 7.0, jz + 1.4);
+                    AABB jetBox = new AABB(jx - 2.4, jy - 0.5, jz - 2.4, jx + 2.4, jy + 10.0, jz + 2.4);
                     for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, jetBox, x -> validTarget(x, p))) {
                         e.invulnerableTime = 0;
                         e.hurt(p.damageSources().playerAttack(p), 12.0F);
@@ -481,7 +495,7 @@ public class HeroForm {
             }
             // heat haze around the roaring demon
             if (a % 2 == 0) {
-                level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + 0.3, p.getZ(), 10, 2.5, 0.2, 2.5, 0.03);
+                level.sendParticles(ModParticles.PURPLE_FLAME.get(), p.getX(), p.getY() + 0.3, p.getZ(), 14, 7.0, 0.2, 7.0, 0.03);
             }
             return;
         }
@@ -489,18 +503,18 @@ public class HeroForm {
             // MASSIVE EXPLOSION centred on his own eye line (so he is not flung), he is shielded for the instant of the blast
             double cx = p.getX(), cy = p.getEyeY(), cz = p.getZ();
             p.setInvulnerable(true);
-            level.explode(p, cx, cy, cz, 9.0F, true, Level.ExplosionInteraction.BLOCK);
+            level.explode(p, cx, cy, cz, 15.0F, true, Level.ExplosionInteraction.BLOCK);
             p.setInvulnerable(false);
 
-            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(18.0), x -> validTarget(x, p))) {
+            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(36.0), x -> validTarget(x, p))) {
                 double dist = e.distanceTo(p);
-                if (dist > 18.0) {
+                if (dist > 36.0) {
                     continue;
                 }
                 Vec3 away = new Vec3(e.getX() - p.getX(), 0, e.getZ() - p.getZ());
                 away = away.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : away.normalize();
                 e.invulnerableTime = 0;
-                e.hurt(p.damageSources().playerAttack(p), dist < 9.0 ? 160.0F : 90.0F);
+                e.hurt(p.damageSources().playerAttack(p), dist < 18.0 ? 170.0F : 100.0F);
                 e.setSecondsOnFire(20);
                 e.setDeltaMovement(e.getDeltaMovement().add(away.x * 3.0, 1.1, away.z * 3.0));
                 e.hurtMarked = true;
@@ -510,7 +524,7 @@ public class HeroForm {
                 double rad = Math.toRadians(deg);
                 for (int ring = 1; ring <= 3; ring++) {
                     level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + 0.4, p.getZ(), 0,
-                            Math.cos(rad) * ring * 0.55, 0.12 * ring, Math.sin(rad) * ring * 0.55, 1.0);
+                            Math.cos(rad) * ring * 1.1, 0.14 * ring, Math.sin(rad) * ring * 1.1, 1.0);
                 }
             }
             for (int k = 0; k < 40; k++) {
@@ -518,10 +532,10 @@ public class HeroForm {
                         (p.getRandom().nextDouble() - 0.5) * 0.5, 0.8 + p.getRandom().nextDouble() * 1.2,
                         (p.getRandom().nextDouble() - 0.5) * 0.5, 1.0);
             }
-            level.sendParticles(ModParticles.PURPLE_SPARK.get(), cx, cy, cz, 220, 5.0, 3.0, 5.0, 0.8);
-            level.sendParticles(ModParticles.PURPLE_EMBER.get(), cx, cy, cz, 160, 6.0, 3.0, 6.0, 0.15);
-            level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, cx, cy - 2.0, cz, 3, 3.0, 0.5, 3.0, 0);
-            FxUtil.purpleBurst(level, new Vec3(cx, cy - 1.5, cz), 300, 4.0);
+            level.sendParticles(ModParticles.PURPLE_SPARK.get(), cx, cy, cz, 300, 12.0, 6.0, 12.0, 0.9);
+            level.sendParticles(ModParticles.PURPLE_EMBER.get(), cx, cy, cz, 220, 14.0, 6.0, 14.0, 0.15);
+            level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, cx, cy - 4.0, cz, 6, 8.0, 0.5, 8.0, 0);
+            FxUtil.purpleBurst(level, new Vec3(cx, cy - 3.0, cz), 420, 8.0);
             level.playSound(null, cx, cy, cz, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 4.0F, 0.5F);
             level.playSound(null, cx, cy, cz, SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 3.0F, 0.6F);
             level.playSound(null, cx, cy, cz, SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 3.0F, 0.4F);
@@ -554,7 +568,7 @@ public class HeroForm {
         };
         if (idx >= 0) {
             boolean finisher = idx == 3;
-            cone(p, level, 6.5, 0.15, finisher ? 45.0F : 25.0F, finisher ? 3.0 : 0.9, finisher ? 10 : 5, false);
+            cone(p, level, 10.0, 0.15, finisher ? 45.0F : 25.0F, finisher ? 3.0 : 0.9, finisher ? 10 : 5, false);
             slashArc(p, level, idx, finisher);
             level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 1.5F, finisher ? 0.5F : 0.7F);
             if (finisher) {
@@ -570,9 +584,9 @@ public class HeroForm {
         Vec3 look = p.getLookAngle();
         Vec3 right = look.cross(new Vec3(0, 1, 0));
         right = right.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : right.normalize();
-        Vec3 center = p.getEyePosition().subtract(0, 1.2, 0);
+        Vec3 center = chest(p);
         double tilt = (idx % 2 == 0) ? 1.0 : -1.0;
-        double scale = finisher ? 1.5 : 1.0;
+        double scale = finisher ? 2.3 : 1.6;
         for (int i = -10; i <= 10; i++) {
             double t = i / 10.0;
             Vec3 pt = center.add(look.scale((3.2 - 1.4 * t * t) * scale))
@@ -588,14 +602,217 @@ public class HeroForm {
         }
     }
 
+    // ------------------------------------------------------------------ 5. Meteor Impact (rush, grab, leap, slam)
+    private static void trigger(ServerPlayer p, State s, String anim) {
+        if (s.avatar != null && p.serverLevel().getEntity(s.avatar) instanceof DemonEntity d) {
+            d.triggerAnim("attack", anim);
+        }
+    }
+
+    private static void releaseGrab(ServerLevel level, State s) {
+        if (s.grabbed == null) {
+            return;
+        }
+        if (level.getEntity(s.grabbed) instanceof LivingEntity le) {
+            le.setInvulnerable(false);
+            if (le instanceof net.minecraft.world.entity.Mob mob) {
+                mob.setNoAi(s.grabNoAi);
+            } else {
+                le.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
+                le.removeEffect(MobEffects.WEAKNESS);
+            }
+        }
+        s.grabbed = null;
+    }
+
+    private static void holdTarget(ServerPlayer p, LivingEntity t, Vec3 flat, ServerLevel level) {
+        double x = p.getX() + flat.x * 2.6;
+        double y = p.getY() + 3.6;
+        double z = p.getZ() + flat.z * 2.6;
+        if (t instanceof ServerPlayer tp) {
+            tp.teleportTo(level, x, y, z, tp.getYRot(), tp.getXRot());
+        } else {
+            t.setPos(x, y, z);
+        }
+        t.setDeltaMovement(Vec3.ZERO);
+        t.fallDistance = 0;
+        t.hurtMarked = true;
+    }
+
+    private static void endMeteor(ServerPlayer p, State s, ServerLevel level, int busyAfter, boolean recoverAnim) {
+        releaseGrab(level, s);
+        s.attack = null;
+        s.mPhase = 0;
+        s.busy = busyAfter;
+        if (recoverAnim) {
+            trigger(p, s, "meteor_recover");
+        }
+    }
+
+    private static void tickMeteor(ServerPlayer p, State s, ServerLevel level) {
+        s.mTicks++;
+        Vec3 look = p.getLookAngle();
+        Vec3 flat = new Vec3(look.x, 0, look.z);
+        flat = flat.lengthSqr() < 1.0E-4 ? new Vec3(0, 0, 1) : flat.normalize();
+        LivingEntity target = (s.grabbed != null && level.getEntity(s.grabbed) instanceof LivingEntity le) ? le : null;
+
+        switch (s.mPhase) {
+            // ---- 1: rush forward until something is in his claws
+            case 1 -> {
+                if (s.mTicks == 1) {
+                    level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 2.0F, 1.5F);
+                }
+                p.setDeltaMovement(flat.x * 1.7, -0.08, flat.z * 1.7);
+                p.hurtMarked = true;
+                p.fallDistance = 0;
+                level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX() - flat.x * 1.5, p.getY() + 0.5, p.getZ() - flat.z * 1.5, 3, 1.0, 0.3, 1.0, 0.02);
+                level.sendParticles(ModParticles.PURPLE_SPARK.get(), p.getX(), p.getY() + 1.5, p.getZ(), 2, 1.2, 1.2, 1.2, 0.2);
+
+                AABB box = p.getBoundingBox().inflate(1.4, 0.0, 1.4).move(flat.scale(1.8));
+                LivingEntity hit = null;
+                double best = Double.MAX_VALUE;
+                for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box, x -> validTarget(x, p))) {
+                    double d = e.distanceToSqr(p);
+                    if (d < best) {
+                        best = d;
+                        hit = e;
+                    }
+                }
+                if (hit != null) {
+                    // GRABBED: freeze them so they cannot attack, then leap
+                    s.grabbed = hit.getUUID();
+                    if (hit instanceof net.minecraft.world.entity.Mob mob) {
+                        s.grabNoAi = mob.isNoAi();
+                        mob.setNoAi(true);
+                    } else {
+                        hit.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 240, 10, false, false, false));
+                        hit.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 240, 10, false, false, false));
+                    }
+                    hit.setInvulnerable(true);
+                    hit.setDeltaMovement(Vec3.ZERO);
+                    s.mPhase = 2;
+                    s.mTicks = 0;
+                    s.peakY = p.getY();
+                    p.setDeltaMovement(flat.x * 0.3, 1.55, flat.z * 0.3);
+                    p.hurtMarked = true;
+                    trigger(p, s, "meteor_leap");
+                    FxUtil.purpleBurst(level, hit.getBoundingBox().getCenter(), 60, 0.8);
+                    level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.2F, 1.4F);
+                } else if (s.mTicks >= 16) {
+                    p.setDeltaMovement(flat.x * 0.2, 0, flat.z * 0.2);
+                    p.hurtMarked = true;
+                    endMeteor(p, s, level, 14, true); // whiffed
+                }
+            }
+            // ---- 2: airborne with the victim held in front of him
+            case 2 -> {
+                p.fallDistance = 0;
+                if (target == null || !target.isAlive()) {
+                    endMeteor(p, s, level, 10, true);
+                    return;
+                }
+                holdTarget(p, target, flat, level);
+                s.peakY = Math.max(s.peakY, p.getY());
+                if (s.mTicks % 2 == 0) {
+                    level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + 0.5, p.getZ(), 3, 1.0, 0.3, 1.0, 0.02);
+                }
+                if (s.mTicks > 6 && (p.getY() < s.peakY - 0.3 || s.mTicks > 45)) {
+                    // top of the leap: SLAM
+                    s.mPhase = 3;
+                    s.mTicks = 0;
+                    trigger(p, s, "meteor_slam");
+                    p.setDeltaMovement(flat.x * 0.3, -2.8, flat.z * 0.3);
+                    p.hurtMarked = true;
+                    level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 2.5F, 0.6F);
+                }
+            }
+            // ---- 3: plummeting; impact the moment he touches ground
+            case 3 -> {
+                p.fallDistance = 0;
+                if (target != null && target.isAlive()) {
+                    holdTarget(p, target, flat, level);
+                }
+                if (s.mTicks < 4) {
+                    p.setDeltaMovement(flat.x * 0.3, -2.8, flat.z * 0.3);
+                    p.hurtMarked = true;
+                }
+                level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + 3.0, p.getZ(), 4, 1.2, 1.5, 1.2, 0.02);
+                level.sendParticles(ModParticles.PURPLE_SPARK.get(), p.getX(), p.getY() + 3.0, p.getZ(), 3, 1.2, 1.5, 1.2, 0.3);
+                if ((s.mTicks >= 3 && p.onGround()) || s.mTicks > 40) {
+                    meteorImpact(p, s, level, target, flat);
+                }
+            }
+            default -> s.attack = null;
+        }
+    }
+
+    private static void meteorImpact(ServerPlayer p, State s, ServerLevel level, LivingEntity target, Vec3 flat) {
+        Vec3 c = p.position();
+        releaseGrab(level, s);
+        if (target != null && target.isAlive()) {
+            double gx = c.x + flat.x * 2.6, gz = c.z + flat.z * 2.6;
+            if (target instanceof ServerPlayer tp) {
+                tp.teleportTo(level, gx, c.y, gz, tp.getYRot(), tp.getXRot());
+            } else {
+                target.setPos(gx, c.y, gz);
+            }
+            target.invulnerableTime = 0;
+            target.hurt(p.damageSources().playerAttack(p), 170.0F);
+            target.setSecondsOnFire(15);
+        }
+        for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, p.getBoundingBox().inflate(16.0),
+                x -> validTarget(x, p) && x != target)) {
+            double d = e.distanceTo(p);
+            if (d > 16.0) {
+                continue;
+            }
+            Vec3 away = new Vec3(e.getX() - p.getX(), 0, e.getZ() - p.getZ());
+            away = away.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : away.normalize();
+            e.invulnerableTime = 0;
+            e.hurt(p.damageSources().playerAttack(p), 75.0F);
+            e.setSecondsOnFire(10);
+            e.setDeltaMovement(e.getDeltaMovement().add(away.x * 2.4, 0.9, away.z * 2.4));
+            e.hurtMarked = true;
+        }
+        p.setInvulnerable(true);
+        level.explode(p, c.x, c.y + 0.3, c.z, 6.0F, true, Level.ExplosionInteraction.BLOCK);
+        p.setInvulnerable(false);
+        p.setDeltaMovement(0, 0, 0);
+        p.hurtMarked = true;
+        p.fallDistance = 0;
+
+        for (int deg = 0; deg < 360; deg += 10) {
+            double rad = Math.toRadians(deg);
+            for (int ring = 1; ring <= 3; ring++) {
+                level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), c.x, c.y + 0.4, c.z, 0,
+                        Math.cos(rad) * ring * 0.9, 0.12 * ring, Math.sin(rad) * ring * 0.9, 1.0);
+            }
+        }
+        level.sendParticles(ModParticles.PURPLE_SPARK.get(), c.x, c.y + 1.0, c.z, 140, 6.0, 1.5, 6.0, 0.8);
+        level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, c.x, c.y + 0.5, c.z, 3, 3.0, 0.3, 3.0, 0);
+        FxUtil.purpleBurst(level, c.add(0, 1.0, 0), 220, 4.0);
+        level.playSound(null, c.x, c.y, c.z, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 3.5F, 0.5F);
+        level.playSound(null, c.x, c.y, c.z, SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 2.0F, 0.4F);
+        level.playSound(null, c.x, c.y, c.z, SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 2.0F, 0.7F);
+
+        s.attack = null;
+        s.mPhase = 0;
+        s.busy = 14;
+    }
+
     // ------------------------------------------------------------------ helpers
+    /** Roughly the demon's chest: attacks are measured from here, not from his eyes 6 blocks up. */
+    private static Vec3 chest(ServerPlayer p) {
+        return p.position().add(0, 3.0, 0);
+    }
+
     private static boolean validTarget(LivingEntity e, ServerPlayer p) {
         return e != p && e.isAlive() && !(e instanceof FiendEntity f && f.isOwner(p));
     }
 
     private static void cone(ServerPlayer p, ServerLevel level, double reach, double minDot,
                              float damage, double knockback, int fireSeconds, boolean electric) {
-        Vec3 eye = p.getEyePosition();
+        Vec3 eye = chest(p);
         Vec3 look = p.getLookAngle();
         AABB box = p.getBoundingBox().expandTowards(look.scale(reach)).inflate(2.5);
         for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box, x -> validTarget(x, p))) {

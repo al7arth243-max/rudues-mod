@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.rudues.mod.RuduesMod;
+import com.rudues.mod.ability.HeroConstants;
 import com.rudues.mod.entity.BeamEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
@@ -57,7 +58,7 @@ public class BeamRenderer extends EntityRenderer<BeamEntity> {
         if (owner != null) {
             // follow the owner's live aim so the beam never lags behind the crosshair
             Vec3 look = owner.getViewVector(partialTick);
-            Vec3 origin = owner.getEyePosition(partialTick).add(look.scale(2.4)).subtract(0, 1.1, 0);
+            Vec3 origin = owner.getEyePosition(partialTick).add(look.scale(HeroConstants.BEAM_FORWARD)).subtract(0, HeroConstants.BEAM_DOWN, 0);
             Vec3 delta = origin.subtract(entity.getPosition(partialTick));
             poseStack.translate(delta.x, delta.y, delta.z);
             yaw = owner.getViewYRot(partialTick);
@@ -69,9 +70,9 @@ public class BeamRenderer extends EntityRenderer<BeamEntity> {
         float time = entity.tickCount + partialTick;
         float pulse = 1.0F + 0.12F * Mth.sin(time * 1.9F);
         VertexConsumer vc = buffer.getBuffer(RenderType.eyes(TEXTURE));
-        drawPlanes(poseStack, vc, length, 1.0F * pulse, -time * 0.30F, 255, 255, 255, 190);   // wide glow
-        drawPlanes(poseStack, vc, length, 0.55F * pulse, -time * 0.55F, 235, 190, 255, 255);  // mid
-        drawPlanes(poseStack, vc, length, 0.22F * pulse, -time * 0.90F, 255, 245, 255, 255);  // white-hot core
+        drawPlanes(poseStack, vc, length, 1.6F * pulse, -time * 0.30F, 255, 255, 255, 190);   // wide glow
+        drawPlanes(poseStack, vc, length, 0.9F * pulse, -time * 0.55F, 235, 190, 255, 255);  // mid
+        drawPlanes(poseStack, vc, length, 0.38F * pulse, -time * 0.90F, 255, 245, 255, 255);  // white-hot core
         poseStack.popPose();
     }
 

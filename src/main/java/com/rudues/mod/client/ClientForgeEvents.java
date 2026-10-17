@@ -7,7 +7,12 @@ import com.rudues.mod.registry.ModEffects;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderBlockScreenEffectEvent;
 import net.minecraftforge.client.event.RenderHandEvent;
+import net.minecraftforge.client.event.ViewportEvent;
+import com.rudues.mod.ability.HeroConstants;
+import net.minecraft.client.Camera;
+import java.lang.reflect.Method;
 import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -17,6 +22,8 @@ import net.minecraftforge.fml.common.Mod;
 public class ClientForgeEvents {
     private static boolean wheelWasDown = false;
     private static boolean wasDemon = false;
+    private static Method cameraMove;
+    private static boolean cameraLookedUp = false;
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -31,6 +38,9 @@ public class ClientForgeEvents {
 
         if (ClientPowerState.heroTicks > 0) {
             ClientPowerState.heroTicks--;
+        }
+        if (ClientPowerState.hasPowers && mc.player.isOnFire()) {
+            mc.player.clearFire();
         }
 
         // when the local player turns into (or back from) the demon: resize hitbox, show them the demon
@@ -75,5 +85,50 @@ public class ClientForgeEvents {
         if (mc.player != null && mc.player.hasEffect(ModEffects.HERO_OF_HELL.get())) {
             event.setCanceled(true);
         }
+    }
+
+    /** No burning-screen overlay for anyone carrying the power. */
+    @SubscribeEvent
+    public static void onScreenEffect(RenderBlockScreenEffectEvent event) {
+        if (event.getOverlayType() == RenderBlockScreenEffectEvent.OverlayType.FIRE && ClientPowerState.hasPowers) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** The demon is huge: pull the third-person camera back and up so you can actually see. */
+    @SubscribeEvent
+    public static void onCameraSetup(ViewportEvent.ComputeCameraAngles event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.options.getCameraType().isFirstPerson()
+                || !mc.player.hasEffect(ModEffects.HERO_OF_HELL.get())) {
+            return;
+        }
+        Method move = findCameraMove();
+        if (move == null) {
+            return;
+        }
+        try {
+            move.invoke(event.getCamera(), -HeroConstants.CAMERA_EXTRA, 1.5D, 0.0D);
+        } catch (Exception ignored) {
+            // leave the camera alone if anything goes wrong
+        }
+    }
+
+    private static Method findCameraMove() {
+        if (!cameraLookedUp) {
+            cameraLookedUp = true;
+            // runtime (obfuscated) name first, then the dev-environment name
+            for (String name : new String[]{"m_90568_", "move"}) {
+                try {
+                    Method m = Camera.class.getDeclaredMethod(name, double.class, double.class, double.class);
+                    m.setAccessible(true);
+                    cameraMove = m;
+                    break;
+                } catch (Exception ignored) {
+                    // try next
+                }
+            }
+        }
+        return cameraMove;
     }
 }

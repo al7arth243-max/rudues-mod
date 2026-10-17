@@ -2,7 +2,7 @@
   "item.rudues.fire_fiend": "Fire Fiend",
   "item.rudues.fire_fiend.tooltip1": "A tiny fiend of purple flame.",
   "item.rudues.fire_fiend.tooltip2": "Use it to gain permanent Strength V & Resistance III",
-  "item.rudues.fire_fiend.tooltip3": "and the power of the Skill Wheel (hold R).",
+  "item.rudues.fire_fiend.tooltip3": "and the power of the Skill Wheel (hold R). Immune to fire.",
   "itemGroup.rudues": "Rudues Mod",
   "entity.rudues.rage_blast": "Rage Blast",
   "entity.rudues.wind_slash": "Violent Gale",
@@ -28,7 +28,7 @@
   "ability.rudues.obliterator_maximum": "Obliterator Maximum",
   "ability.rudues.obliterator_maximum.desc": "A devastating punch of purple flames and purple lightning.",
   "ability.rudues.hellfire": "Hellfire",
-  "ability.rudues.hellfire.desc": "Roar for 3 seconds as fountains of purple fire erupt around you, then detonate in a massive explosion.",
+  "ability.rudues.hellfire.desc": "Roar for 3 seconds as fountains of purple fire erupt across a huge area, then detonate in a colossal explosion.",
   "ability.rudues.slash_combo": "Slash Combo",
   "ability.rudues.slash_combo.desc": "Rake your claws through enemies in a multi-hit combo.",
   "message.rudues.power_gained": "The Fire Fiend's power surges through you!",
@@ -40,5 +40,7 @@
   "gui.rudues.selected": "selected",
   "gui.rudues.wheel_hint": "Point at a move and release the key (or click) to select it",
   "gui.rudues.cast_hint": "Cast it with [%s]",
-  "entity.rudues.concentrated_beam": "Concentrated Beam"
+  "entity.rudues.concentrated_beam": "Concentrated Beam",
+  "ability.rudues.meteor_impact": "Meteor Impact",
+  "ability.rudues.meteor_impact.desc": "Rush forward; if you catch an enemy you grab them, leap high and slam them into the ground."
 }

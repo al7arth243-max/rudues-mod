@@ -2,10 +2,13 @@ package com.rudues.mod.events;
 
 import com.rudues.mod.RuduesMod;
 import com.rudues.mod.ability.AbilityHandler;
+import com.rudues.mod.ability.HeroConstants;
 import com.rudues.mod.ability.HeroForm;
 import com.rudues.mod.ability.PowerData;
 import com.rudues.mod.registry.ModEffects;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
@@ -28,6 +31,9 @@ public class CommonEvents {
         if (!PowerData.has(sp)) {
             return;
         }
+        if (sp.isOnFire()) {
+            sp.clearFire(); // the fiend's power makes you immune to catching fire
+        }
         if (sp.tickCount % 20 == 0) {
             PowerData.applyEffects(sp);
         }
@@ -42,10 +48,21 @@ public class CommonEvents {
                     && ModEffects.HERO_OF_HELL.isPresent()
                     && player.hasEffect(ModEffects.HERO_OF_HELL.get())
                     && (event.getPose() == Pose.STANDING || event.getPose() == Pose.CROUCHING)) {
-                event.setNewSize(EntityDimensions.scalable(1.6F, 5.0F), true);
+                event.setNewSize(EntityDimensions.scalable(HeroConstants.DEMON_WIDTH, HeroConstants.DEMON_HEIGHT), false);
+                // Player.getEyeHeight ignores the hitbox, so the eye height must be set explicitly
+                event.setNewEyeHeight(event.getPose() == Pose.CROUCHING ? HeroConstants.DEMON_EYE - 0.4F : HeroConstants.DEMON_EYE);
             }
         } catch (RuntimeException ignored) {
             // this event can fire while the player object is still being constructed (effects not ready yet)
+        }
+    }
+
+    /** No fire / lava damage for anyone carrying the power. */
+    @SubscribeEvent
+    public static void onAttacked(LivingAttackEvent event) {
+        if (event.getEntity() instanceof Player player && PowerData.has(player)
+                && event.getSource().is(DamageTypeTags.IS_FIRE)) {
+            event.setCanceled(true);
         }
     }
 

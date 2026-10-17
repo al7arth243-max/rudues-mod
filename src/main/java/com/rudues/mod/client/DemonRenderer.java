@@ -3,6 +3,7 @@ package com.rudues.mod.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.rudues.mod.RuduesMod;
+import com.rudues.mod.ability.HeroConstants;
 import com.rudues.mod.entity.DemonEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
@@ -25,8 +26,8 @@ import java.util.UUID;
 public class DemonRenderer extends GeoEntityRenderer<DemonEntity> {
     public DemonRenderer(EntityRendererProvider.Context context) {
         super(context, new DefaultedEntityGeoModel<>(new ResourceLocation(RuduesMod.MODID, "rage_demon")));
-        // the model is ~4.25 blocks tall; scale it up so it stands 5 blocks tall
-        withScale(1.18F);
+        // the model is ~4.25 blocks tall; scale it up so it stands 7 blocks tall
+        withScale(HeroConstants.DEMON_SCALE);
     }
 
     @Override
