@@ -1,0 +1,10 @@
+{
+  "clue_track": {
+    "sounds": [
+      {
+        "name": "watchers:clue_track",
+        "stream": true
+      }
+    ]
+  }
+}
