@@ -1,8 +1,6 @@
 {
   "pack": {
-    "description": {
-      "text": "${mod_name} resources"
-    },
+    "description": "Rudues Mod resources",
     "pack_format": 15
   }
 }

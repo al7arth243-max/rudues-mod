@@ -12,9 +12,9 @@ public class HeroConstants {
     public static final float DEMON_EYE = 6.0F;
     public static final float DEMON_SCALE = 1.65F;   // model is ~4.25 blocks at scale 1
     /** third-person camera is pulled this far back while a demon (on top of vanilla's 4 blocks) */
-    public static final double CAMERA_EXTRA = 9.0;
+    public static final double CAMERA_EXTRA = 5.0;
 
-    /** where the beam leaves the demon, relative to the eye */
-    public static final double BEAM_FORWARD = 3.6;
-    public static final double BEAM_DOWN = 1.7;
+    /** the breath beam leaves his MOUTH: this high above his feet and this far ahead along the aim */
+    public static final double BEAM_Y = 4.3;
+    public static final double BEAM_FORWARD = 2.6;
 }

@@ -7,7 +7,9 @@ import com.rudues.mod.entity.FiendEntity;
 import com.rudues.mod.entity.RageBlastEntity;
 import com.rudues.mod.network.Network;
 import com.rudues.mod.registry.ModEffects;
+import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerBossEvent;
@@ -169,7 +171,11 @@ public class HeroForm {
                         AttributeModifier.Operation.ADDITION));
             }
             p.setHealth(p.getMaxHealth());
+            p.removeEffect(MobEffects.JUMP);
+            p.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
             p.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, HeroConstants.DEMON_TICKS + 20, 1, false, false, true));
+            // Jump Boost IX: roughly a 9 block leap for a 7 block demon
+            p.addEffect(new MobEffectInstance(MobEffects.JUMP, HeroConstants.DEMON_TICKS + 20, 8, false, false, true));
 
             s.bar = new ServerBossEvent(Component.translatable("gui.rudues.hero_of_hell"),
                     BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS);
@@ -229,6 +235,7 @@ public class HeroForm {
                 case HELLFIRE -> tickHellfire(p, s, level);
                 case SLASH_COMBO -> tickSlash(p, s, level);
                 case METEOR_IMPACT -> tickMeteor(p, s, level);
+                case TREE_OF_SIN -> tickTree(p, s, level);
                 default -> s.attack = null;
             }
         }
@@ -254,6 +261,7 @@ public class HeroForm {
     private static void cleanupVisuals(ServerPlayer p, State s) {
         p.removeEffect(ModEffects.HERO_OF_HELL.get());
         p.removeEffect(MobEffects.MOVEMENT_SPEED);
+        p.removeEffect(MobEffects.JUMP);
         p.setInvulnerable(false);
         discardBeam(p, s);
         releaseGrab(p.serverLevel(), s);
@@ -327,6 +335,13 @@ public class HeroForm {
                 s.mTicks = 0;
                 s.grabbed = null;
             }
+            case TREE_OF_SIN -> {
+                s.busy = 240;
+                anim = "tree_rush";
+                s.mPhase = 11;
+                s.mTicks = 0;
+                s.grabbed = null;
+            }
             default -> {
                 s.busy = 24;
                 anim = "slash";
@@ -345,7 +360,7 @@ public class HeroForm {
     private static void tickBeam(ServerPlayer p, State s, ServerLevel level) {
         int a = s.attackTicks;
         Vec3 look = p.getLookAngle();
-        Vec3 origin = p.getEyePosition().add(look.scale(HeroConstants.BEAM_FORWARD)).subtract(0, HeroConstants.BEAM_DOWN, 0);
+        Vec3 origin = p.position().add(0, HeroConstants.BEAM_Y, 0).add(look.scale(HeroConstants.BEAM_FORWARD));
 
         if (a < 10) {
             if (a == 1) {
@@ -625,10 +640,10 @@ public class HeroForm {
         s.grabbed = null;
     }
 
-    private static void holdTarget(ServerPlayer p, LivingEntity t, Vec3 flat, ServerLevel level) {
-        double x = p.getX() + flat.x * 2.6;
-        double y = p.getY() + 3.6;
-        double z = p.getZ() + flat.z * 2.6;
+    private static void holdTarget(ServerPlayer p, LivingEntity t, Vec3 flat, ServerLevel level, double dist, double height) {
+        double x = p.getX() + flat.x * dist;
+        double y = p.getY() + height;
+        double z = p.getZ() + flat.z * dist;
         if (t instanceof ServerPlayer tp) {
             tp.teleportTo(level, x, y, z, tp.getYRot(), tp.getXRot());
         } else {
@@ -711,7 +726,7 @@ public class HeroForm {
                     endMeteor(p, s, level, 10, true);
                     return;
                 }
-                holdTarget(p, target, flat, level);
+                holdTarget(p, target, flat, level, 2.6, 3.6);
                 s.peakY = Math.max(s.peakY, p.getY());
                 if (s.mTicks % 2 == 0) {
                     level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX(), p.getY() + 0.5, p.getZ(), 3, 1.0, 0.3, 1.0, 0.02);
@@ -730,7 +745,7 @@ public class HeroForm {
             case 3 -> {
                 p.fallDistance = 0;
                 if (target != null && target.isAlive()) {
-                    holdTarget(p, target, flat, level);
+                    holdTarget(p, target, flat, level, 2.6, 3.6);
                 }
                 if (s.mTicks < 4) {
                     p.setDeltaMovement(flat.x * 0.3, -2.8, flat.z * 0.3);
@@ -798,6 +813,139 @@ public class HeroForm {
         s.attack = null;
         s.mPhase = 0;
         s.busy = 14;
+    }
+
+    // ------------------------------------------------------------------ 6. Tree of Sin (root axe, rush, grab, savage combo)
+    private static final int[] TREE_HITS = {8, 16, 24, 32, 44};
+    private static final BlockParticleOption WOOD_CHIPS =
+            new BlockParticleOption(ParticleTypes.BLOCK, Blocks.DARK_OAK_LOG.defaultBlockState());
+
+    private static void tickTree(ServerPlayer p, State s, ServerLevel level) {
+        s.mTicks++;
+        Vec3 look = p.getLookAngle();
+        Vec3 flat = new Vec3(look.x, 0, look.z);
+        flat = flat.lengthSqr() < 1.0E-4 ? new Vec3(0, 0, 1) : flat.normalize();
+        LivingEntity target = (s.grabbed != null && level.getEntity(s.grabbed) instanceof LivingEntity le) ? le : null;
+
+        if (s.mPhase == 11) {
+            // ---- the axe of roots bursts from the ground into his fist as he charges
+            if (s.mTicks == 1) {
+                level.sendParticles(WOOD_CHIPS, p.getX() + flat.x * 1.5, p.getY() + 1.0, p.getZ() + flat.z * 1.5, 60, 1.2, 1.0, 1.2, 0.3);
+                FxUtil.purpleBurst(level, chest(p), 50, 1.2);
+                level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.WOOD_BREAK, SoundSource.PLAYERS, 2.0F, 0.5F);
+                level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.ENDER_DRAGON_GROWL, SoundSource.PLAYERS, 2.0F, 1.2F);
+            }
+            p.setDeltaMovement(flat.x * 1.7, -0.08, flat.z * 1.7);
+            p.hurtMarked = true;
+            p.fallDistance = 0;
+            level.sendParticles(ModParticles.PURPLE_FLAME_BIG.get(), p.getX() - flat.x * 1.5, p.getY() + 0.5, p.getZ() - flat.z * 1.5, 3, 1.0, 0.3, 1.0, 0.02);
+            level.sendParticles(WOOD_CHIPS, p.getX() - flat.x, p.getY() + 0.3, p.getZ() - flat.z, 4, 0.8, 0.2, 0.8, 0.1);
+
+            AABB box = p.getBoundingBox().inflate(1.4, 0.0, 1.4).move(flat.scale(1.8));
+            LivingEntity hit = null;
+            double best = Double.MAX_VALUE;
+            for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, box, x -> validTarget(x, p))) {
+                double d = e.distanceToSqr(p);
+                if (d < best) {
+                    best = d;
+                    hit = e;
+                }
+            }
+            if (hit != null) {
+                s.grabbed = hit.getUUID();
+                if (hit instanceof net.minecraft.world.entity.Mob mob) {
+                    s.grabNoAi = mob.isNoAi();
+                    mob.setNoAi(true);
+                } else {
+                    hit.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 200, 10, false, false, false));
+                    hit.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 200, 10, false, false, false));
+                }
+                hit.setInvulnerable(true);
+                hit.setDeltaMovement(Vec3.ZERO);
+                s.mPhase = 12;
+                s.mTicks = 0;
+                p.setDeltaMovement(0, 0, 0);
+                p.hurtMarked = true;
+                trigger(p, s, "tree_combo");
+                level.sendParticles(WOOD_CHIPS, hit.getX(), hit.getY() + 1.0, hit.getZ(), 40, 0.6, 0.8, 0.6, 0.2);
+                FxUtil.purpleBurst(level, hit.getBoundingBox().getCenter(), 60, 0.8);
+                level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0F, 1.6F);
+            } else if (s.mTicks >= 16) {
+                p.setDeltaMovement(flat.x * 0.2, 0, flat.z * 0.2);
+                p.hurtMarked = true;
+                trigger(p, s, "tree_miss");
+                witherAxe(p, level);
+                endMeteor(p, s, level, 14, false); // whiffed: the axe crumbles
+            }
+            return;
+        }
+
+        // ---- phase 12: held in the claws, carved up by the root axe
+        if (target == null || !target.isAlive()) {
+            trigger(p, s, "tree_miss");
+            witherAxe(p, level);
+            endMeteor(p, s, level, 10, false);
+            return;
+        }
+        holdTarget(p, target, flat, level, 3.0, 2.8);
+        p.fallDistance = 0;
+        if (s.mTicks % 3 == 0) {
+            level.sendParticles(ModParticles.PURPLE_EMBER.get(), target.getX(), target.getY() + 1.0, target.getZ(), 2, 0.5, 0.6, 0.5, 0.05);
+        }
+        for (int i = 0; i < TREE_HITS.length; i++) {
+            if (s.mTicks == TREE_HITS[i]) {
+                treeSlash(p, s, level, target, flat, i);
+            }
+        }
+        if (s.mTicks >= 54) {
+            // axe withers, victim is cast to the ground
+            witherAxe(p, level);
+            if (target.isAlive()) {
+                double gx = p.getX() + flat.x * 3.2, gz = p.getZ() + flat.z * 3.2;
+                releaseGrab(level, s);
+                if (target instanceof ServerPlayer tp) {
+                    tp.teleportTo(level, gx, p.getY(), gz, tp.getYRot(), tp.getXRot());
+                } else {
+                    target.setPos(gx, p.getY(), gz);
+                }
+                target.setDeltaMovement(flat.x * 1.4, 0.4, flat.z * 1.4);
+                target.hurtMarked = true;
+            }
+            endMeteor(p, s, level, 12, false);
+        }
+    }
+
+    private static void treeSlash(ServerPlayer p, State s, ServerLevel level, LivingEntity target, Vec3 flat, int idx) {
+        boolean finisher = idx == TREE_HITS.length - 1;
+        target.setInvulnerable(false);
+        target.invulnerableTime = 0;
+        target.hurt(p.damageSources().playerAttack(p), finisher ? 130.0F : 45.0F);
+        if (target.isAlive()) {
+            target.setInvulnerable(true);
+        }
+        // anything else near the swing gets caught by it too
+        cone(p, level, 9.0, 0.2, 30.0F, 0.9, 5, false);
+
+        Vec3 c = target.getBoundingBox().getCenter();
+        level.sendParticles(WOOD_CHIPS, c.x, c.y, c.z, finisher ? 90 : 45, 0.7, 0.7, 0.7, 0.3);
+        FxUtil.purpleBurst(level, c, finisher ? 110 : 45, 0.8);
+        level.sendParticles(ModParticles.PURPLE_SPARK.get(), c.x, c.y, c.z, finisher ? 60 : 24, 0.8, 0.8, 0.8, 0.4);
+        slashArc(p, level, idx, finisher);
+        level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.AXE_STRIP, SoundSource.PLAYERS, 1.6F, finisher ? 0.5F : 0.8F);
+        level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 1.5F, 0.6F);
+        level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.WOOD_BREAK, SoundSource.PLAYERS, 1.2F, finisher ? 0.5F : 0.9F);
+        if (finisher) {
+            level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.5F, 0.7F);
+        }
+    }
+
+    /** the root axe crumbles into splinters and embers (the model itself shrinks away via animation) */
+    private static void witherAxe(ServerPlayer p, ServerLevel level) {
+        Vec3 hand = chest(p).add(p.getLookAngle().scale(2.5));
+        level.sendParticles(WOOD_CHIPS, hand.x, hand.y, hand.z, 80, 1.2, 1.2, 1.2, 0.25);
+        level.sendParticles(ModParticles.PURPLE_EMBER.get(), hand.x, hand.y, hand.z, 50, 1.2, 1.2, 1.2, 0.08);
+        FxUtil.purpleBurst(level, hand, 40, 1.0);
+        level.playSound(null, p.getX(), p.getY(), p.getZ(), SoundEvents.WOOD_BREAK, SoundSource.PLAYERS, 2.0F, 0.4F);
     }
 
     // ------------------------------------------------------------------ helpers

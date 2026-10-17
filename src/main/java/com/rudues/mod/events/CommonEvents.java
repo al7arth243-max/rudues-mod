@@ -9,6 +9,7 @@ import com.rudues.mod.registry.ModEffects;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
@@ -62,6 +63,15 @@ public class CommonEvents {
     public static void onAttacked(LivingAttackEvent event) {
         if (event.getEntity() instanceof Player player && PowerData.has(player)
                 && event.getSource().is(DamageTypeTags.IS_FIRE)) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** a 7-block demon with a huge jump should not hurt himself landing */
+    @SubscribeEvent
+    public static void onFall(LivingFallEvent event) {
+        if (event.getEntity() instanceof Player player && ModEffects.HERO_OF_HELL.isPresent()
+                && player.hasEffect(ModEffects.HERO_OF_HELL.get())) {
             event.setCanceled(true);
         }
     }

@@ -46,6 +46,9 @@ public class DemonEntity extends Entity implements GeoEntity {
     private static final RawAnimation METEOR_LEAP = RawAnimation.begin().thenPlayAndHold("animation.rage_demon.meteor_leap");
     private static final RawAnimation METEOR_SLAM = RawAnimation.begin().thenPlay("animation.rage_demon.meteor_slam");
     private static final RawAnimation METEOR_RECOVER = RawAnimation.begin().thenPlay("animation.rage_demon.meteor_recover");
+    private static final RawAnimation TREE_RUSH = RawAnimation.begin().thenPlayAndHold("animation.rage_demon.tree_rush");
+    private static final RawAnimation TREE_COMBO = RawAnimation.begin().thenPlay("animation.rage_demon.tree_combo");
+    private static final RawAnimation TREE_MISS = RawAnimation.begin().thenPlay("animation.rage_demon.tree_miss");
     private static final RawAnimation SLASH = RawAnimation.begin().thenPlay("animation.rage_demon.slash_combo");
 
     /** length of the spawn/roar animation in ticks */
@@ -118,7 +121,10 @@ public class DemonEntity extends Entity implements GeoEntity {
                 .triggerableAnim("meteor_rush", METEOR_RUSH)
                 .triggerableAnim("meteor_leap", METEOR_LEAP)
                 .triggerableAnim("meteor_slam", METEOR_SLAM)
-                .triggerableAnim("meteor_recover", METEOR_RECOVER));
+                .triggerableAnim("meteor_recover", METEOR_RECOVER)
+                .triggerableAnim("tree_rush", TREE_RUSH)
+                .triggerableAnim("tree_combo", TREE_COMBO)
+                .triggerableAnim("tree_miss", TREE_MISS));
     }
 
     private PlayState mainAnimation(AnimationState<DemonEntity> state) {

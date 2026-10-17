@@ -58,7 +58,7 @@ public class BeamRenderer extends EntityRenderer<BeamEntity> {
         if (owner != null) {
             // follow the owner's live aim so the beam never lags behind the crosshair
             Vec3 look = owner.getViewVector(partialTick);
-            Vec3 origin = owner.getEyePosition(partialTick).add(look.scale(HeroConstants.BEAM_FORWARD)).subtract(0, HeroConstants.BEAM_DOWN, 0);
+            Vec3 origin = owner.getPosition(partialTick).add(0, HeroConstants.BEAM_Y, 0).add(look.scale(HeroConstants.BEAM_FORWARD));
             Vec3 delta = origin.subtract(entity.getPosition(partialTick));
             poseStack.translate(delta.x, delta.y, delta.z);
             yaw = owner.getViewYRot(partialTick);

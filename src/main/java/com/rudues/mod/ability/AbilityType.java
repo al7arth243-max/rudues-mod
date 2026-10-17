@@ -17,7 +17,8 @@ public enum AbilityType {
     OBLITERATOR_MAXIMUM("obliterator_maximum", 100, 0, true),
     HELLFIRE("hellfire", 200, 0, true),
     SLASH_COMBO("slash_combo", 80, 0, true),
-    METEOR_IMPACT("meteor_impact", 260, 0, true);
+    METEOR_IMPACT("meteor_impact", 260, 0, true),
+    TREE_OF_SIN("tree_of_sin", 300, 0, true);
 
     public final String id;
     public final int cooldown;
